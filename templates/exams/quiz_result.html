@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="container mt-4">
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h4 class="mb-0">Result — {{ attempt.quiz.title }}</h4>
+      <div><strong>Score:</strong> {{ attempt.score }}</div>
+    </div>
+    <div class="card-body">
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <canvas id="resultChart" height="100"></canvas>
+
+      {# Safely embed JSON data #}
+      {{ chart_labels|json_script:"chart-labels" }}
+      {{ chart_values|json_script:"chart-values" }}
+
+
+      <hr>
+      <h5>Question breakdown</h5>
+      <div>
+        {% for r in qrows %}
+          <div class="border rounded p-3 mb-2">
+            <div class="d-flex justify-content-between">
+              <div>
+                <strong>Q{{ forloop.counter }}.</strong> {{ r.text }} <br>
+                <small>Max marks: {{ r.max_marks }}</small>
+              </div>
+              <div class="text-end">
+                {% if r.type == "objective" %}
+                  {% if r.status == "correct" %}
+                    <span class="badge bg-success">Correct</span>
+                  {% else %}
+                    <span class="badge bg-danger">Wrong</span>
+                  {% endif %}
+                {% else %}
+                  {% if r.status == "pending" %}
+                    <span class="badge bg-warning text-dark">Pending</span>
+                  {% else %}
+                    <span class="badge bg-info">Graded</span>
+                  {% endif %}
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="mt-2">
+              <strong>Your answer:</strong> {{ r.student_answer }} <br>
+              {% if r.correct_answer %}<strong>Correct answer:</strong> {{ r.correct_answer }}<br>{% endif %}
+              <strong>Marks:</strong> {{ r.marks_awarded }} / {{ r.max_marks }}<br>
+              {% if r.feedback %}<strong>Feedback:</strong> {{ r.feedback }}{% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <a href="{% url 'review_attempt' attempt.id %}" class="btn btn-outline-secondary">Review</a>
+      <a href="{% url 'student_dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+  </div>
+</div>
+<script>
+    // debug: check chart data in console
+  const labels = JSON.parse(document.getElementById('chart-labels').textContent);
+  const values = JSON.parse(document.getElementById('chart-values').textContent);
+  console.log('chart labels:', labels);
+  console.log('chart values:', values);
+
+    const ctx = document.getElementById('resultChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Percent of marks obtained (objectives)',
+        data: values,
+        backgroundColor: values.map(v => v === null ? 'rgba(200,200,200,0.5)' : 'rgba(54,162,235,0.7)')
+      }]
+    },
+    options: {
+      scales: { y: { beginAtZero: true, max: 100 } }
+    }
+  });
+</script>
+{% endblock %}

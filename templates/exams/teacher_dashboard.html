@@ -1,0 +1,570 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="mb-3 fw-bold">👨‍🏫 Teacher Dashboard</h2>
+    </div>
+    <div class="d-flex align-items-center">
+      <a href="{% url 'manage_quizzes' %}" class="btn btn-success btn-sm me-2">Advance</a>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div aria-live="polite" aria-atomic="true" class="position-relative">
+    <div id="toast-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
+  </div>
+
+  <div class="row">
+    <!-- LEFT COLUMN -->
+    <div class="col-lg-4">
+      <!-- Notifications -->
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>📩 Notifications</strong>
+          <small><span id="notif-count">0</span></small>
+        </div>
+        <ul id="notifications-list" class="list-group list-group-flush" style="max-height:320px; overflow:auto;"></ul>
+        <div class="card-footer d-flex justify-content-between">
+          <button class="btn btn-sm btn-outline-secondary" id="notif-prev">Prev</button>
+          <small id="notif-pager"></small>
+          <button class="btn btn-sm btn-outline-secondary" id="notif-next">Next</button>
+        </div>
+      </div>
+
+      <!-- Broadcast -->
+      <div class="card mb-3 p-3">
+        <h6>📢 Broadcast Message</h6>
+        <form id="broadcast-form" method="post" class="mb-3">
+          {% csrf_token %}
+          <div class="mb-2">
+            <label>Message</label>
+            <textarea name="message" class="form-control" rows="3" required></textarea>
+          </div>
+          <div class="mb-2">
+            <label>Target</label>
+            <select name="audience" class="form-control" required>
+              <option value="students">Students</option>
+              <option value="admin">Admins</option>
+            </select>
+          </div>
+          <button id="broadcast-btn" class="btn btn-sm btn-warning w-100">Send</button>
+        </form>
+
+        <h5>📝 Your Broadcasts</h5>
+        <ul class="list-group" id="broadcasts-list"></ul>
+        <div class="mt-3 d-flex justify-content-between align-items-center">
+          <button class="btn btn-outline-secondary btn-sm" id="broadcast-prev">Prev</button>
+          <small id="broadcast-pager"></small>
+          <button class="btn btn-outline-secondary btn-sm" id="broadcast-next">Next</button>
+        </div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div class="card mb-3">
+        <div class="card-header"><strong>🏆 Leaderboard (Top Students)</strong></div>
+        <ul id="leaderboard-list" class="list-group list-group-flush"></ul>
+      </div>
+
+      <!-- Download Reports -->
+      <div class="card mb-3 p-2">
+        <div class="card-header btn bg-warning">
+          <strong>📄 Download Student Reports</strong>
+        </div>
+          <div class="card-body">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Class</th>
+                  <th>Report</th>
+                </tr>
+              </thead>
+              <tbody>
+              
+                {% for student in students_with_att_page %}
+                 <tr>
+                   <td>{{ student.get_full_name|default:student.username }}</td>
+                 <td>{{ student.student_class.name }}</td>
+                   <td>
+                     <a href="{% url 'student_report_pdf' student.id %}" class="btn btn-sm btn-primary">
+                       Download PDF
+                     </a>
+                   </td>
+                 </tr>     
+              {% empty %}
+                 <tr>
+                   <td colspan="3" class="text-center text-muted">No students found.</td>
+                 </tr>
+                 {% endfor %}
+              
+               </tbody>
+             </table>
+           </div>
+         
+          <div class="card-footer d-flex justify-content-between align-items-center">
+           {% if students_with_att_page.has_previous %}
+             <a href="?students_with_att_page={{ students_with_att_page.previous_page_number }}" class="btn btn-sm btn-outline-secondary">Prev</a>
+           {% else %}
+             <button class="btn btn-sm btn-outline-secondary" disabled>Prev</button>
+           {% endif %}
+
+           <small id="report-pager">Page {{ students_with_att_page.number }} of {{ students_with_att_page.paginator.num_pages }}</small>
+
+           {% if students_with_att_page.has_next %}
+             <a href="?students_with_att_page={{ students_with_att_page.next_page_number }}" class="btn btn-sm btn-outline-secondary">Next</a>
+           {% else %}
+             <button class="btn btn-sm btn-outline-secondary" disabled>Next</button>
+           {% endif %}
+         </div>
+         </div>
+
+
+        <!-- Exam Management -->
+        <div class="card mt-3">
+          <div class="card-header"><strong>Exams Management</strong></div>
+          <div class="card-body">
+            <a href="{% url 'create_quiz' %}" class="btn btn-primary btn-sm">Create Exam</a>
+            <a href="{% url 'manage_quizzes_teacher' %}" class="btn btn-warning btn-sm">Edit Exams</a>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- RIGHT COLUMN -->
+      <div class="col-lg-8">
+        <!-- Summary -->
+        <div class="card mb-3">
+          <div class="card-header"><strong>📊 Summary</strong></div>
+          <div class="card-body" id="summary-area"></div>
+        </div>
+
+        <!-- Quizzes -->
+        <div class="card mb-3">
+          <div class="card-header d-flex justify-content-between">
+            <strong>📝 Exams</strong>
+            <small>auto-refresh</small>
+          </div>
+          <div class="card-body" id="quizzes-area" style="min-height:120px;"></div>
+          <div class="card-footer d-flex justify-content-between">
+            <button class="btn btn-sm btn-outline-secondary" id="quizzes-prev">Prev</button>
+            <small id="quizzes-pager"></small>
+            <button class="btn btn-sm btn-outline-secondary" id="quizzes-next">Next</button>
+          </div>
+        </div>
+
+        <!-- Grading -->
+        <div class="card shadow-sm">
+          <div class="card-header bg-warning fw-bold d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Student Exam Attempts</span>
+            <input type="text" id="searchInput" class="form-control form-control-sm w-25"
+              placeholder="Search student...">
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-striped mb-0 align-middle" id="attemptsTable">
+            <thead class="table-light">
+              <tr>
+                <th>Student</th>
+                <th>Exam</th>
+                <th>Score</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for attempt in data.grading %}
+              <tr id="row-{{ attempt.id }}">
+                <td>{{ attempt.student.get_full_name }}</td>
+                <td>{{ attempt.quiz.title }}</td>
+                <td class="score">{{ attempt.score|default:"-" }}</td>
+                <td class="status">
+                  {% if attempt.graded %}
+                  <span class="badge bg-success">Graded</span>
+                  {% else %}
+                  <span class="badge bg-warning text-dark">Pending</span>
+                  {% endif %}
+                </td>
+                <td>{{ attempt.submitted_at|date:"d M, Y H:i" }}</td>
+                <td>
+                  {% if not attempt.graded %}
+                  <button class="btn btn-sm btn-primary grade-btn" data-attempt-id="{{ attempt.id }}"
+                    data-bs-toggle="modal" data-bs-target="#gradeModal">
+                    Grade
+                  </button>
+                  {% else %}
+                  <span class="text-muted">Done</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          
+          <!--Table Pagination  -->
+          <div class="card-footer d-flex justify-content-between">
+            <button class="btn btn-sm btn-outline-secondary" id="grade-prev">Prev</button>
+            <small id="grade-pager"></small>
+            <button class="btn btn-sm btn-outline-secondary" id="grade-next">Next</button>
+          </div>
+        </div>
+
+
+        <!-- Chart -->
+        <div class="card mb-3">
+          <div class="card-header"><strong>📈 Class Performance</strong></div>
+          <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+          <div class="card-body"><canvas id="performanceChart" height="300"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal fade" id="gradeModal" tabindex="-1" aria-labelledby="gradeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title fw-semibold" id="gradeModalLabel">Grade Attempt</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="gradeModalBody">
+          <div class="text-center p-3 text-muted">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% block extra_js %}
+  <form style="display:none;">{% csrf_token %}</form>
+  <script>
+     // unified pagination state & dashboard script (fixed shadowing bug)
+  let quizPage = 1, notifPage = 1, gradePage = 1, broadcastPage = 1;
+  const toastContainer = document.getElementById('toast-container');
+  const csrftoken = () => (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '';
+
+  function escapeHtml(str){ if (typeof str !== 'string') return str; return str.replace(/[&<>"'`=\/]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;' })[s]); }
+
+  function showToast(message, type="info"){
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-bg-${type} border-0 show mb-2`;
+    toast.role = "alert";
+    toast.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    toastContainer.appendChild(toast);
+    setTimeout(()=>toast.remove(),4000);
+  }
+
+  // leaderboard renderer
+  function renderLeaderboard(performance, containerId='leaderboard-list', top=5){
+    const container = document.getElementById(containerId);
+    if(!container) return;
+    const list = (performance||[]).map(p=>{
+      const name = p.student_name || p.attempt__student__username || p.full_name || Object.values(p)[0] || 'Unknown';
+      const score = Number(p.avg_score ?? p.score ?? p.score ?? 0);
+      return {name, score};
+    }).sort((a,b)=>b.score-a.score).slice(0, top);
+    if(list.length===0){ container.innerHTML = '<li class="list-group-item">No data</li>'; return; }
+    container.innerHTML = list.map((item, idx)=>{
+      const pct = Math.max(0, Math.min(100, Math.round(item.score)));
+      return `<li class="list-group-item d-flex justify-content-between align-items-center"><div><strong>${idx+1}. ${escapeHtml(item.name)}</strong><div class="small text-muted">Avg: ${pct}%</div></div><div style="min-width:140px;"><div class="progress" style="height:10px;"><div class="progress-bar" role="progressbar" style="width:${pct}%;" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"></div></div></div></li>`;
+    }).join('');
+  }
+
+  // chart renderer
+  let performanceChartInstance = null;
+  function renderPerformanceChart(performance){
+    const canvas = document.getElementById('performanceChart');
+    if(!canvas) return;
+    const items = (performance||[]).map(p=>({ name: p.attempt__student__username||p.student||p.student_name||p.full_name||Object.values(p)[0]||'Unknown', score: Number(p.avg_score ?? p.score ?? p.score ?? 0) }));
+    const labels = items.map(i=>i.name);
+    const values = items.map(i=>i.score);
+    if(performanceChartInstance){
+      performanceChartInstance.data.labels = labels;
+      performanceChartInstance.data.datasets[0].data = values;
+      performanceChartInstance.update();
+      return;
+    }
+    performanceChartInstance = new Chart(canvas, { type:'bar', data:{ labels, datasets:[{ label:'Avg score (%)', data: values, backgroundColor:'rgba(54,162,235,0.6)', borderColor:'rgba(54,162,235,1)', borderWidth:1 }] }, options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true, suggestedMax:100 } }, plugins:{ legend:{ display:false } } } });
+  }
+
+  // attach grade modal handlers
+  function attachGradeHandlers(){
+    const modalBody = document.getElementById('gradeModalBody');
+    document.querySelectorAll('.grade-btn').forEach(btn=>{
+      if(btn._attached) return;
+      btn._attached = true;
+      btn.addEventListener('click', function(){
+        const attemptId = this.dataset.attemptId;
+        modalBody.innerHTML = '<div class="text-center p-3 text-muted">Loading...</div>';
+        fetch(`/exams/teacher/grade/${attemptId}/`, { headers:{ 'X-Requested-With':'XMLHttpRequest' } })
+          .then(res=>{ if(!res.ok) throw new Error('Network response was not ok'); return res.text(); })
+          .then(html=> modalBody.innerHTML = html)
+          .catch(err=>{ console.error(err); modalBody.innerHTML = `<div class="text-danger text-center">Error loading form</div>`; });
+      });
+    });
+  }
+
+  // render grading table and update pager UI
+  function renderGradingTable(attempts, pagination){
+    const tbody = document.querySelector('#attemptsTable tbody');
+    if(!tbody) return;
+    const rowsHtml = (attempts||[]).map(attempt=>{
+      const date = attempt.submitted_at ? new Date(attempt.submitted_at).toLocaleString() : '';
+      const score = (attempt.score !== undefined) ? attempt.score : (attempt.score ?? '-');
+      return `<tr id="row-${attempt.id}"><td>${escapeHtml(attempt.full_name||attempt.student_name||attempt.student||'')}</td><td>${escapeHtml(attempt.quiz||attempt.quiz_title||'')}</td><td class="score">${score ?? '-'}</td><td class="status">${attempt.graded ? '<span class="badge bg-success">Graded</span>' : '<span class="badge bg-warning text-dark">Pending</span>'}</td><td>${date}</td><td>${attempt.graded ? '<span class="text-muted">Done</span>' : `<button class="btn btn-sm btn-primary grade-btn" data-attempt-id="${attempt.id}" data-bs-toggle="modal" data-bs-target="#gradeModal">Grade</button>`}</td></tr>`;
+    }).join('');
+    tbody.innerHTML = rowsHtml || '<tr><td colspan="6" class="text-center text-muted">No attempts</td></tr>';
+
+    // update pager UI
+    const pageNum = pagination?.grade_page_number ?? pagination?.page ?? gradePage;
+    const pageTotal = pagination?.grade_num_pages ?? pagination?.num_pages ?? 1;
+    const pager = document.getElementById('grade-pager');
+    if(pager) pager.innerText = `Page ${pageNum} of ${pageTotal}`;
+    const prevBtn = document.getElementById('grade-prev');
+    const nextBtn = document.getElementById('grade-next');
+    if(prevBtn) prevBtn.disabled = pageNum <= 1;
+    if(nextBtn) nextBtn.disabled = pageNum >= pageTotal;
+
+    // update other pagers if present
+    const quizzesPager = document.getElementById('quizzes-pager'); if(quizzesPager) quizzesPager.innerText = `Page ${pagination?.quiz_page_number ?? 1} of ${pagination?.quiz_num_pages ?? 1}`;
+    const notifPager = document.getElementById('notif-pager'); if(notifPager) notifPager.innerText = `Page ${pagination?.notif_page_number ?? 1} of ${pagination?.notif_num_pages ?? 1}`;
+    const broadcastPager = document.getElementById('broadcast-pager'); if(broadcastPager) broadcastPager.innerText = `Page ${pagination?.broadcast_page_number ?? 1} of ${pagination?.broadcast_num_pages ?? 1}`;
+
+    attachGradeHandlers();
+  }
+
+  // mark notification read
+  function markNotifRead(id){
+    fetch(`/exams/notifications/mark-read/${id}/`, { method:'POST', headers:{ 'X-CSRFToken': csrftoken() } })
+      .then(()=> fetchTeacherDashboard()).catch(()=>{ showToast('Failed to mark read', 'danger'); });
+  }
+
+  // broadcast form submit
+  const broadcastForm = document.getElementById('broadcast-form');
+  if(broadcastForm){
+    broadcastForm.addEventListener('submit', function(e){
+      e.preventDefault();
+      const formData = new FormData(this);
+      fetch("{% url 'teacher_broadcast' %}", { method:'POST', body: formData, headers:{ 'X-CSRFToken': csrftoken() }})
+        .then(r=>r.json()).then(d=>{ showToast(d.message||'Broadcast sent','success'); fetchTeacherDashboard(); })
+        .catch(()=> showToast('Broadcast failed','danger'));
+    });
+  }
+
+  // main fetch that uses the shared page state
+  function fetchTeacherDashboard(){
+    const url = `{% url 'teacher_dashboard_data' %}?page=${quizPage}&notif_page=${notifPage}&grade_page=${gradePage}&broadcast_page=${broadcastPage}`;
+    fetch(url, { credentials:'same-origin' })
+      .then(res => { if(!res.ok) throw new Error('Failed to fetch dashboard data'); return res.json(); })
+      .then(data => {
+        try{ renderLeaderboard(data.performance || data.leaderboard || []); } catch(e){ console.error(e); }
+        try{ renderPerformanceChart(data.performance || data.class_performance || []); } catch(e){ console.error(e); }
+
+        // Summary
+        const summaryArea = document.getElementById('summary-area');
+        if(summaryArea){
+          summaryArea.innerHTML = `
+          <div class="row">
+            <div class="col-md-6">
+              <p><strong>Teacher:</strong> ${data.summary?.teacher || ''}</p>
+              <p><strong>Class:</strong> ${data.summary?.student_class || ''}</p>
+              <p><strong>Class Teacher's Exams:</strong> ${data.summary?.my_class_quizzes || 0}</p>
+              <p><strong>Total Class Exams:</strong> ${data.summary?.total_quizzes || 0}</p>
+              <p><strong>Total Exams Created by me:</strong> ${data.summary?.my_quizzes || 0}</p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>Total Attempts:</strong> ${data.summary?.attempts || 0}</p>
+              <p><strong>Objective Qs:</strong> ${data.summary?.objectives || 0}</p>
+              <p><strong>Pending Exams:</strong> ${data.summary?.pended || 0}</p>
+              <p><strong>Graded Exams:</strong> ${data.summary?.graded || 0}</p>
+              <p><strong>Students In Class:</strong> ${data.summary?.total_students || 0}</p>
+            </div>
+          </div>`;
+        }
+
+        // Quizzes list
+        const quizzesArea = document.getElementById('quizzes-area');
+        if(quizzesArea){
+          quizzesArea.innerHTML = (data.quizzes||[]).length ? (data.quizzes||[]).map(q=>`<div><strong>${escapeHtml(q.title)}</strong> (${escapeHtml(q.subject)}) — ${escapeHtml(q.class_name)}<br>${escapeHtml(q.created_at)} → ${escapeHtml(q.end_time)}</div>`).join('<hr>') : '<p>No exams yet</p>';
+        }
+
+        // Notifications
+        const notList = document.getElementById('notifications-list');
+        if(notList){
+          notList.innerHTML = (data.notifications||[]).length ? (data.notifications||[]).map(n=>`<li class="list-group-item d-flex justify-content-between align-items-start"><div><div>${escapeHtml(n.message)}</div><small class="text-muted">${escapeHtml(n.created_at)}</small></div>${!n.is_read?`<button class="btn btn-sm btn-success text-white" onclick="markNotifRead(${n.id})">Read</button>`:''}</li>`).join('') : '<li class="list-group-item">No notifications</li>';
+          const notifCount = document.getElementById('notif-count');
+          if(notifCount) notifCount.innerText = (data.notifications||[]).length;
+        }
+
+        // Broadcasts
+        const bList = document.getElementById('broadcasts-list');
+        if(bList){
+          bList.innerHTML = (data.broadcasts||[]).length ? (data.broadcasts||[]).map(b=>`<li class="list-group-item"><strong>${escapeHtml(b.get_target_display||b.target)}</strong>: ${escapeHtml(b.message)}<br><small class="text-muted">${escapeHtml(b.created_at)}</small></li>`).join('') : '<li class="list-group-item">No broadcasts</li>';
+        }
+
+        // Grading table
+        if(data.attempts_html){
+          const tbody = document.querySelector('#attemptsTable tbody');
+          if(tbody) tbody.innerHTML = data.attempts_html;
+          attachGradeHandlers();
+          if(data.pagination) renderGradingTable([], data.pagination);
+        } else if(Array.isArray(data.grading)){
+          renderGradingTable(data.grading, data.pagination || {});
+        } else {
+          renderGradingTable([], data.pagination || {});
+        }
+      })
+      .catch(err => { console.error(err); showToast('Failed to load dashboard data','danger'); });
+  }
+
+  // wire pager buttons to the shared state and refresh data
+  const qPrev = document.getElementById('quizzes-prev'); if(qPrev) qPrev.addEventListener('click', ()=>{ if(quizPage>1){ quizPage--; fetchTeacherDashboard(); } });
+  const qNext = document.getElementById('quizzes-next'); if(qNext) qNext.addEventListener('click', ()=>{ quizPage++; fetchTeacherDashboard(); });
+  const nPrev = document.getElementById('notif-prev'); if(nPrev) nPrev.addEventListener('click', ()=>{ if(notifPage>1){ notifPage--; fetchTeacherDashboard(); } });
+  const nNext = document.getElementById('notif-next'); if(nNext) nNext.addEventListener('click', ()=>{ notifPage++; fetchTeacherDashboard(); });
+  const bPrev = document.getElementById('broadcast-prev'); if(bPrev) bPrev.addEventListener('click', ()=>{ if(broadcastPage>1){ broadcastPage--; fetchTeacherDashboard(); } });
+  const bNext = document.getElementById('broadcast-next'); if(bNext) bNext.addEventListener('click', ()=>{ broadcastPage++; fetchTeacherDashboard(); });
+  const gPrev = document.getElementById('grade-prev'); if(gPrev) gPrev.addEventListener('click', ()=>{ if(gradePage>1){ gradePage--; fetchTeacherDashboard(); } });
+  const gNext = document.getElementById('grade-next'); if(gNext) gNext.addEventListener('click', ()=>{ gradePage++; fetchTeacherDashboard(); });
+
+  // search filter
+  const searchInput = document.getElementById('searchInput');
+  if(searchInput){
+    searchInput.addEventListener('keyup', function(){
+      const filter = this.value.toLowerCase();
+      document.querySelectorAll('#attemptsTable tbody tr').forEach(row=>{
+        row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
+      });
+    });
+  }
+
+  // initial bindings & fetch
+  attachGradeHandlers();
+  fetchTeacherDashboard();
+  setInterval(fetchTeacherDashboard, 10000);
+
+
+    (() => {
+      const csrftoken = () => (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '';
+      let quizPage = 1, notifPage = 1, gradePage = 1, broadcastPage = 1;
+      const toastContainer = document.getElementById('toast-container');
+
+      const searchInput = document.getElementById('searchInput');
+      searchInput.addEventListener('keyup', function () {
+        const filter = this.value.toLowerCase();
+        document.querySelectorAll('#attemptsTable tbody tr').forEach(row => {
+          row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
+        });
+      })
+
+      function attachGradeHandlers() {
+        const modalBody = document.getElementById('gradeModalBody');
+        document.querySelectorAll('.grade-btn').forEach(btn => {
+          // ensure fresh node without duplicate listeners
+          const nb = btn.cloneNode(true);
+          btn.parentNode.replaceChild(nb, btn);
+          nb.addEventListener('click', function () {
+            const attemptId = this.dataset.attemptId;
+            modalBody.innerHTML = '<div class="text-center p-3 text-muted">Loading...</div>';
+            fetch(`/exams/teacher/grade/${attemptId}/`, {
+              headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+              .then(res => {
+                if (!res.ok) throw new Error('Network response was not ok');
+                return res.text();
+              })
+              .then(html => {
+                modalBody.innerHTML = html;
+              })
+              .catch(err => {
+                console.error(err);
+                modalBody.innerHTML = `<div class="text-danger text-center">Error loading form</div>`;
+              });
+          });
+        });
+      }
+
+      // delegated submit handler (works for dynamic form in modal)
+      document.addEventListener('submit', function (e) {
+        if (!e.target.matches('#gradeForm')) return;
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+        const attemptId = form.dataset.attemptId;
+        fetch(`/exams/teacher/grade/${attemptId}/`, {
+          method: 'POST',
+          headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': csrftoken() },
+          body: formData
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              const modalEl = document.getElementById('gradeModal');
+              const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+              bsModal.hide();
+              const row = document.getElementById(`row-${attemptId}`);
+              if (row) {
+                const scoreCell = row.querySelector('.score');
+                const statusCell = row.querySelector('.status');
+                const actionCell = row.querySelector('td:last-child');
+                if (scoreCell) scoreCell.textContent = data.score;
+                if (statusCell) statusCell.innerHTML = '<span class="badge bg-success">Graded</span>';
+                if (actionCell) actionCell.innerHTML = '<span class="text-muted">Done</span>';
+              }
+              showToast("✅ " + (data.message || "Saved"), "success");
+              fetchTeacherDashboard();
+            } else {
+              showToast("⚠️ " + (data.message || "Error saving grade"), "danger");
+            }
+          })
+          .catch(err => { console.error(err); showToast("❌ Network error", "danger"); });
+      });
+
+      // main fetch and DOM update 
+      // grading attempts
+      function fetchTeacherDashboard() {
+        fetch(`{% url 'teacher_dashboard_data' %}?page=${quizPage}&notif_page=${notifPage}&grade_page=${gradePage}&broadcast_page=${broadcastPage}`)
+          .then(res => { if (!res.ok) throw new Error('Failed to fetch dashboard data'); return res.json(); })
+          .then(data => {
+
+            // Render grading attempts — support server return key "grading"
+            const tbody = document.querySelector('#attemptsTable tbody');
+            if (data.attempts_html) {
+              tbody.innerHTML = data.attempts_html;
+            } else if (Array.isArray(data.grading)) {
+              rowsHtml = data.grading.map(attempt => {
+                const date = attempt.submitted_at ? new Date(attempt.submitted_at).toLocaleString() : '';
+                const score = (attempt.score !== undefined) ? attempt.score : (attempt.score ?? '-');
+                return `
+              <tr id="row-${attempt.id}">
+                <td>${attempt.full_name}</td>
+                <td>${attempt.quiz}</td>
+                <td class="score">${score ?? '-'}</td>
+                <td class="status">${attempt.graded ? '<span class="badge bg-success">Graded</span>' : '<span class="badge bg-warning text-dark">Pending</span>'}</td>
+                <td>${date}</td>
+                <td>${attempt.graded ? '<span class="text-muted">Done</span>' : `<button class="btn btn-sm btn-primary grade-btn" data-attempt-id="${attempt.id}" data-bs-toggle="modal" data-bs-target="#gradeModal">Grade</button>`}</td>
+              </tr>`;
+              }).join('');
+              tbody.innerHTML = rowsHtml;
+            }
+
+            // update pagers...
+            attachGradeHandlers(); // bind handlers to current DOM
+            renderLeaderboard(data.performance);
+            renderPerformanceChart(data.performance);
+          })
+          .catch(err => { console.error(err); showToast("Failed to load dashboard data", "danger"); });
+      }
+
+      attachGradeHandlers();
+      fetchTeacherDashboard();
+      setInterval(fetchTeacherDashboard, 10000);
+    })();
+
+  </script>
+
+  {% endblock %}
+  {% endblock %}

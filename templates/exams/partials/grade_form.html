@@ -1,0 +1,11 @@
+<form id="gradeForm" data-attempt-id="{{ attempt.id }}">
+    {% csrf_token %}
+    {% for ans in answers %}
+    <div class="mb-3">
+        <p><strong>Q{{ forloop.counter }}:</strong> {{ ans.question.text }}</p>
+        <p><em>Student Answer:</em> {{ ans.text_answer }}</p>
+        <input type="number" name="score_{{ ans.id }}" step="0.5" value="{{ ans.score|default:0 }}" class="form-control w-25">
+    </div>
+    {% endfor %}
+    <button class="btn btn-success mt-3" type="submit">Save</button>
+</form>

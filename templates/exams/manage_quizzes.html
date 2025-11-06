@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block title %}Manage Exams{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container mt-4">
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mt-3">
+    <h2 class='fw-bold mb-3'>Manage Exams</h2>
+    <nav class="d-flex gap-3">
+      <a class="btn btn-success btn-sm" href="{% url 'create_quiz' %}">Create Exam</a>
+      <a class="btn btn-warning btn-sm" href="{% url 'manage_classes_subjects' %}">Class & Subject</a>
+      <a class="btn btn-primary btn-sm" href="{% url 'retake_requests_list' %}">Allow retake exam</a>
+      <a class="btn btn-dark btn-sm" href="{% url 'dashboard' %}">Back</a>
+    </nav>
+  </div>
+
+  <!-- Search -->
+  <div class="row mt-3">
+    <div class="col-md-6">
+      <input type="text" id="quizSearch" class="form-control" placeholder="🔍 Search by title, subject, or class...">
+    </div>
+  </div>
+
+  <br>
+
+  <!-- Quizzes table -->
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Subject</th>
+        <th>Start</th>
+        <th>End</th>
+        <th>Published</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="quizTableBody">
+      {% for q in page_obj %}
+      <tr id="quiz-row-{{ q.id }}">
+        <td>{{ q.title }}</td>
+        <td>{{ q.subject.name }} ({{ q.subject.school_class.name }})</td>
+        <td>{{ q.start_time }}</td>
+        <td>{{ q.end_time }}</td>
+        <td><span id="pub-{{ q.id }}">{{ q.is_published|yesno:"Yes,No" }}</span></td>
+        <td>
+          <a href="/exams/quizzes/details/{{q.id}}/" class="btn btn-sm btn-outline-secondary mt-1">View</a>
+          <button class="btn btn-sm btn-outline-primary publish-btn" data-id="{{ q.id }}">{{ q.is_published|yesno:"Unpublish,Publish" }}</button>
+          <a href="{% url 'edit_quiz_page' q.id %}" class="btn btn-sm btn-warning mt-1">Edit</a>
+          <button class="btn btn-sm btn-danger delete-btn" data-id="{{ q.id }}">Delete</button>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6">No quizzes yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Pagination -->
+  <div class="d-flex justify-content-center">
+    <nav aria-label="Page navigation">
+      <ul class="pagination" id="quizPagination">
+        {% if page_obj.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">&laquo;</a></li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+          {% if page_obj.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+          {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+          {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">&raquo;</a></li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script>
+(function(){
+  const csrftoken = document.querySelector('input[name=csrfmiddlewaretoken]')?.value;
+
+  // Toggle publish
+  document.querySelectorAll('.publish-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.dataset.id;
+      const res = await fetch(`/exams/api/${id}/publish_toggle/`, {
+        method: 'POST', headers: {'X-CSRFToken': csrftoken}
+      });
+      const d = await res.json();
+      if (d.ok) {
+        document.getElementById('pub-'+id).textContent = d.is_published ? 'Yes' : 'No';
+        btn.textContent = d.is_published ? 'Unpublish' : 'Publish';
+      }
+    });
+  });
+
+  // Delete quiz
+  document.querySelectorAll('.delete-btn').forEach(btn=>{
+    btn.addEventListener('click', async () =>{
+      if (!confirm('Delete this Exam?')) return;
+      const id = btn.dataset.id;
+      const res = await fetch(`/exams/api/${id}/delete/`, {
+        method: 'POST', headers: {'X-CSRFToken': csrftoken}
+      });
+      const d = await res.json();
+      if (d.ok) document.getElementById('quiz-row-'+id).remove();
+    });
+  });
+})();
+
+// AJAX fetch with pagination + search
+async function fetchQuizzes(query="", page=1) {
+  const res = await fetch(`/exams/api/search_quizzes/?q=${encodeURIComponent(query)}&page=${page}`);
+  const data = await res.json();
+
+  let tbody = document.getElementById("quizTableBody");
+  tbody.innerHTML = "";
+
+  if (data.results.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6">No quizzes found.</td></tr>`;
+  } else {
+    data.results.forEach(q=>{
+      tbody.innerHTML += `
+        <tr id="quiz-row-${q.id}">
+          <td>${q.title}</td>
+          <td>${q.subject} (${q.class_name})</td>
+          <td>${q.start_time}</td>
+          <td>${q.end_time}</td>
+          <td><span id="pub-${q.id}">${q.is_published ? "Yes" : "No"}</span></td>
+          <td>
+            <a href="/exams/quizzes/details/${q.id}/" class="btn btn-sm btn-outline-secondary mt-1">View</a>
+            <button class="btn btn-sm btn-outline-primary publish-btn" data-id="${q.id}">${q.is_published ? "Unpublish" : "Publish"}</button>
+            <a href="/exams/edit/${q.id}/" class="btn btn-sm btn-warning mt-1">Edit</a>
+            <button class="btn btn-sm btn-danger .delete-btn" data-id="${q.id}">Delete</button>          
+          </td>
+        </tr>`;
+    });
+  }
+
+  // Rebuild pagination dynamically
+  let pagination = document.getElementById("quizPagination");
+  pagination.innerHTML = "";
+
+  if (data.has_previous) {
+    pagination.innerHTML += `<li class="page-item"><a class="page-link" href="#" onclick="fetchQuizzes('${query}', ${data.previous_page})">&laquo;</a></li>`;
+  } else {
+    pagination.innerHTML += `<li class="page-item disabled"><span class="page-link">&laquo;</span></li>`;
+  }
+
+  for (let i = 1; i <= data.num_pages; i++) {
+    if (i === data.current_page) {
+      pagination.innerHTML += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+    } else if (i >= data.current_page - 2 && i <= data.current_page + 2) {
+      pagination.innerHTML += `<li class="page-item"><a class="page-link" href="#" onclick="fetchQuizzes('${query}', ${i})">${i}</a></li>`;
+    }
+  }
+
+  if (data.has_next) {
+    pagination.innerHTML += `<li class="page-item"><a class="page-link" href="#" onclick="fetchQuizzes('${query}', ${data.next_page})">&raquo;</a></li>`;
+  } else {
+    pagination.innerHTML += `<li class="page-item disabled"><span class="page-link">&raquo;</span></li>`;
+  }
+}
+
+// Search event
+document.getElementById("quizSearch").addEventListener("keyup", function() {
+  fetchQuizzes(this.value, 1);
+});
+</script>
+{% endblock %}

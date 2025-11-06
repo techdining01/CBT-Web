@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %} Edit Exam {% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center">
+    <h1 class="fw-bold">Edit Exam</h1>
+    <nav class="d-flex gap-3">
+    <a class="btn btn-info btn-sm" href="{% url 'create_quiz' %}">Create Exam</a>
+    <a class="btn btn-warning btn-sm" href="{% url 'manage_classes_subjects' %}">Class & Subject</a>
+    <a class="btn btn-success" href="{% url 'manage_quizzes' %} ">Manage exam</a>
+    <a class="btn btn-primary" href="{% url 'dashboard' %}">Dashboard</a>
+    <a class="btn btn-outline-secondary" href="{% url 'manage_quizzes' %}">← Back</a>
+    </nav>     
+  </div>
+
+  <!-- Hidden CSRF form -->
+  <form id="csrf-form" style="display:none;">{% csrf_token %}</form>
+
+  <div id="alert-area" class="mt-3"></div>
+
+  <div class="card mt-3">
+    <div class="card-body">
+      <div class="mb-3">
+        <label class="form-label">Quiz Title</label>
+        <input id="quiz-title" class="form-control" placeholder="Quiz title">
+      </div>
+
+      <div class="row mb-3 gx-2">
+        <div class="col-md-5">
+          <label class="form-label">Subject</label>
+          <select id="quiz-subject" class="form-select">
+            <option value="">-- select subject --</option>
+            {% for s in subjects %}
+              <option value="{{ s.id }}">{{ s.name }} ({{ s.school_class.name }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Start time</label>
+          <input id="quiz-start" type="datetime-local" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">End time</label>
+          <input id="quiz-end" type="datetime-local" class="form-control">
+        </div>
+        <div class="col-md-1">
+          <label class="form-label">Duration</label>
+          <input id="quiz-duration" type="number" class="form-control" value="30" min="1">
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-3">
+          <label class="form-label">Published?</label>
+          <select id="quiz-publish" class="form-select">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </div>
+      </div>
+
+      <hr>
+
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">Questions</h5>
+        <div>
+          <label for="text"></label>
+        </div>
+      </div>
+
+      <div id="questions-container" class="mb-3"></div>
+
+    <div class="mb-2">
+      <button id="add-question-btn" class="btn btn-sm btn-primary">+ Add Question</button>
+    </div>
+
+      <div class="d-flex gap-2">
+        <button id="save-quiz-btn" class="btn btn-success">Save Changes</button>
+        <a href="{% url 'manage_quizzes' %}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Template JS -->
+<script>
+(function () {
+  // Basic settings
+  const quizId = {{ quiz.id }};
+  const CSRF = document.querySelector('#csrf-form input[name=csrfmiddlewaretoken]').value;
+  const QUIZ_JSON_URL = "{% url 'quiz_json' quiz.id %}"; // must exist
+  const SAVE_URL = `/exams/api/edit/${quizId}/`;       // matches your edit_quiz_ajax view
+
+  // utility: show alert
+  function showAlert(message, kind = 'success', autoHide = true) {
+    const area = document.getElementById('alert-area');
+    area.innerHTML = `<div class="alert alert-${kind} alert-dismissible fade show" role="alert">
+                       ${message}
+                       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                      </div>`;
+    if (autoHide) setTimeout(()=> { area.innerHTML = ''; }, 5000);
+  }
+
+  /* ----------------------
+     Question builder helpers
+     ---------------------- */
+  let qIndex = 0;
+
+  function addChoiceBlock(qcontainer, text = '', checked = false) {
+    const list = qcontainer.querySelector('.choices-list');
+    const row = document.createElement('div');
+    row.className = 'input-group mb-1 align-items-center choice-row';
+
+    row.innerHTML = `
+      <input type="text" class="form-control choice-text" placeholder="Choice text" value="${escapeHtml(text)}">
+      <span class="input-group-text d-flex align-items-center">
+        <input class="form-check-input mt-0 choice-correct" type="checkbox" ${checked ? 'checked' : ''} title="Mark as correct">
+      </span>
+      <button class="btn btn-danger btn-sm remove-choice" type="button" title="Remove choice">✖</button>
+    `;
+
+    // wire remove
+    row.querySelector('.remove-choice').addEventListener('click', () => row.remove());
+    list.appendChild(row);
+    return row;
+  }
+
+  function addQuestionBlock(prefill = null) {
+    const idx = ++qIndex;
+    const container = document.createElement('div');
+    container.className = 'card mb-2';
+    container.dataset.idx = idx;
+
+    container.innerHTML = `
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-2">
+          <strong>Question <span class="q-num">${idx}</span></strong>
+          <div>
+            <button class="btn btn-sm btn-outline-danger remove-q">Remove</button>
+          </div>
+        </div>
+
+        <textarea class="form-control q-text mb-2" rows="2" placeholder="Question text"></textarea>
+
+        <div class="row mb-2 gx-2">
+          <div class="col-md-6">
+            <label class="form-label small">Type</label>
+            <select class="form-select q-type">
+              <option value="objective">Objective</option>
+              <option value="subjective">Subjective</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Marks</label>
+            <input type="number" class="form-control q-marks" value="1" min="1">
+          </div>
+        </div>
+
+        <div class="choices-section mb-2">
+          <label class="form-label small">Choices (for objective)</label>
+          <div class="choices-list mb-2"></div>
+          <button class="btn btn-sm btn-outline-secondary add-choice">+ Add Choice</button>
+        </div>
+
+        <div class="mt-1">
+          <small class="text-muted">For objective questions mark at least one correct choice.</small>
+        </div>
+      </div>
+    `;
+
+    // attach events
+    container.querySelector('.remove-q').addEventListener('click', () => container.remove());
+
+    const qTypeSel = container.querySelector('.q-type');
+    const choicesSection = container.querySelector('.choices-section');
+    const addChoiceBtn = container.querySelector('.add-choice');
+
+    // if question type changes -> show/hide choices area
+    qTypeSel.addEventListener('change', (ev) => {
+      if (ev.target.value === 'objective') {
+        choicesSection.style.display = '';
+        addChoiceBtn.disabled = false;
+      } else {
+        choicesSection.style.display = 'none';
+        addChoiceBtn.disabled = true;
+      }
+    });
+
+    // Add choice button
+    addChoiceBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      addChoiceBlock(container, '', false);
+    });
+
+    // If prefill provided, populate fields and choices
+    if (prefill) {
+      container.querySelector('.q-text').value = prefill.text || '';
+      container.querySelector('.q-marks').value = prefill.marks || 1;
+      container.querySelector('.q-type').value = prefill.question_type || 'objective';
+      if (prefill.question_type === 'subjective') {
+        choicesSection.style.display = 'none';
+        addChoiceBtn.disabled = true;
+      }
+      if (prefill.question_type === 'objective' && Array.isArray(prefill.choices)) {
+        // clear any default added choices (we haven't added default ones here)
+        container.querySelector('.choices-list').innerHTML = '';
+        prefill.choices.forEach(ch => addChoiceBlock(container, ch.text || '', !!ch.is_correct));
+      }
+    } else {
+      // default new block: objective with 2 choices to help UX
+      qTypeSel.value = 'objective';
+      choicesSection.style.display = '';
+      addChoiceBlock(container, '', false);
+      addChoiceBlock(container, '', false);
+    }
+
+    document.getElementById('questions-container').appendChild(container);
+    return container;
+  }
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"'`]/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;", "`":"&#96;"}[m]));
+  }
+
+  /* ----------------------
+     Prefill quiz using quiz_json
+     ---------------------- */
+  async function prefillQuiz() {
+    try {
+      const r = await fetch(QUIZ_JSON_URL);
+      const data = await r.json();
+      if (!data.ok) {
+        showAlert('Failed to load quiz data: ' + (data.error||'unknown'), 'danger');
+        return;
+      }
+
+      const q = data.quiz;
+      // basic fields
+      document.getElementById('quiz-title').value = q.title || '';
+      document.getElementById('quiz-subject').value = q.subject_id || '';
+      document.getElementById('quiz-duration').value = q.duration_minutes || 30;
+      document.getElementById('quiz-publish').value = q.is_published ? 'true' : 'false';
+
+      // convert ISO -> local datetime-local format
+      
+      function isoToLocalInput(iso) {
+        if (!iso) return null;
+        // Don't convert to UTC, just return "YYYY-MM-DDTHH:MM"
+        return iso;
+        const d = new Date(iso);
+        // adjust for timezone offset for correct input value
+        const tzOff = d.getTimezoneOffset();
+        const local = new Date(d.getTime() - tzOff * 60000);
+        return local.toISOString().slice(0,16); // "YYYY-MM-DDTHH:MM"
+      }
+      document.getElementById('quiz-start').value = isoToLocalInput(q.start_time);
+      document.getElementById('quiz-end').value = isoToLocalInput(q.end_time);
+
+      // questions: clear container then add
+      document.getElementById('questions-container').innerHTML = '';
+      if (Array.isArray(q.questions) && q.questions.length) {
+        q.questions.forEach(ques => {
+          addQuestionBlock(ques);
+        });
+      } else {
+        // start with one empty question
+        addQuestionBlock();
+      }
+
+    } catch (err) {
+      console.error(err);
+      showAlert('Network error while loading quiz.', 'danger');
+    }
+  }
+
+  /* ----------------------
+     Collect & Save
+     ---------------------- */
+  function collectPayload() {
+    const title = document.getElementById('quiz-title').value.trim();
+    const subject_id = document.getElementById('quiz-subject').value;
+    const start_time_raw = document.getElementById('quiz-start').value;
+    const end_time_raw = document.getElementById('quiz-end').value;
+    const duration_minutes = parseInt(document.getElementById('quiz-duration').value || 30, 10);
+    const is_published = document.getElementById('quiz-publish').value === 'true';
+
+    // convert datetime-local to ISO (server timezone aware parsing expected)
+    function localInputToISO(s) {
+      if (!s) return null;
+      // s is "YYYY-MM-DDTHH:MM"
+      return new Date(s).toISOString();
+    }
+
+    const questions = [];
+    const qnodes = document.querySelectorAll('#questions-container > .card');
+    qnodes.forEach((qn) => {
+      const text = qn.querySelector('.q-text').value.trim();
+      const question_type = qn.querySelector('.q-type').value;
+      const marks = parseInt(qn.querySelector('.q-marks').value || 1, 10);
+
+      const qobj = { text, question_type, marks };
+      if (question_type === 'objective') {
+        const choices = [];
+        qn.querySelectorAll('.choices-list .choice-row').forEach(cr => {
+          const ctext = cr.querySelector('.choice-text').value.trim();
+          const cis = !!cr.querySelector('.choice-correct').checked;
+          choices.push({ text: ctext, is_correct: cis });
+        });
+        qobj.choices = choices;
+      }
+      questions.push(qobj);
+    });
+
+    return {
+      title, subject_id, start_time: localInputToISO(start_time_raw),
+      end_time: localInputToISO(end_time_raw), duration_minutes, is_published, questions
+    };
+  }
+
+  async function saveQuiz() {
+    const payload = collectPayload();
+
+    // basic validation
+    if (!payload.title) { showAlert('Title is required.', 'danger'); return; }
+    if (!payload.subject_id) { showAlert('Subject required.', 'danger'); return; }
+    // validate objective questions have choices and at least one correct
+    for (const [i, q] of payload.questions.entries()) {
+      if (!q.text) { showAlert(`Question ${i+1}: text is required.`, 'danger'); return; }
+      if (q.question_type === 'objective') {
+        if (!q.choices || q.choices.length < 2) { showAlert(`Question ${i+1}: at least two choices required.`, 'danger'); return; }
+        if (!q.choices.some(c => c.is_correct)) { showAlert(`Question ${i+1}: mark at least one choice as correct.`, 'danger'); return; }
+      }
+    }
+
+    try {
+      const res = await fetch(SAVE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+        body: JSON.stringify(payload)
+      });
+      const j = await res.json();
+      if (!j.ok) {
+        showAlert('Save error: ' + (j.error || 'unknown'), 'danger');
+        return;
+      }
+      showAlert('Quiz saved successfully.', 'success');
+      // redirect little later to manage page
+      setTimeout(()=> { window.location.href = "{% url 'manage_quizzes' %}"; }, 900);
+    } catch (err) {
+      console.error(err);
+      showAlert('Network error while saving.', 'danger');
+    }
+  }
+
+  /* ----------------------
+     Wire UI
+     ---------------------- */
+  document.getElementById('add-question-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+    addQuestionBlock();
+    // scroll to bottom so teacher sees new question
+    setTimeout(()=> window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
+  });
+
+  document.getElementById('save-quiz-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+    saveQuiz();
+  });
+
+  // initial load
+  prefillQuiz();
+
+})();
+</script>
+
+<style>
+  /* small polish */
+  .choice-row .choice-text { min-width: 0; }
+  .card .form-label.small { margin-bottom: 0.25rem; font-size: .85rem; }
+</style>
+{% endblock %}

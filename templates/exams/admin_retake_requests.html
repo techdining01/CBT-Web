@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="fw-bold mb-3">📌 Retake Requests</h2>
+    <div>
+      <a class="btn btn-success" style="width: 160px; height: 45px;font-size: 1.1rem;" href="{% url 'manage_quizzes' %}">Manage Exam</a>
+      <a class="btn btn-primary" style="width: 140px; height: 45px;font-size: 1.1rem;" href="{% url 'dashboard' %}">Dashboard</a>
+    </div>
+  </div>
+
+  <!-- 🔍 Search -->
+  <div class="mb-3">
+    <input type="text" id="search-bar" class="form-control" placeholder="Search by student or quiz..." />
+  </div>
+
+  <!-- 📋 Requests Table -->
+  <div id="requests-container">
+    <table class="table table-bordered align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>#</th>
+          <th>Student</th>
+          <th>Exam</th>
+          <th>Reason</th>
+          <th>Status</th>
+          <th>Requested At</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="requests-body">
+        {% for req in requests %}
+          <tr id="req-{{ req.id }}">
+            <td>{{ forloop.counter }}</td>
+            <td>{{ req.student.get_full_name }}</td>
+            <td>{{ req.quiz.title }}</td>
+            <td>{{ req.reason|default:"—" }}</td>
+            <td>
+              {% if req.status == 'pending' %}
+                <span class="badge bg-warning text-dark">pending</span>
+              {% elif req.status == 'approved' %}
+                <span class="badge bg-success">approved</span>
+              {% else %}
+                <span class="badge bg-danger">denied</span>
+              {% endif %}
+            </td>
+            <td>{{ req.created_at|date:" d M, Y H:i" }}</td>
+            <td>
+              {% if req.status == 'pending' %}
+                <button class="btn btn-sm btn-success approve-btn" data-id="{{ req.id }}">Approve</button>
+                <button class="btn btn-sm btn-danger deny-btn" data-id="{{ req.id }}">Deny</button>
+              {% else %}
+                <em>No action</em>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="text-center">No retake requests yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Pagination Controls -->
+    <div class="d-flex justify-content-between align-items-center">
+      <button id="prev-page" class="btn btn-outline-secondary btn-sm" {% if not requests.has_previous %}disabled{% endif %}>Prev</button>
+      <small>Page {{ requests.number }} of {{ requests.paginator.num_pages }}</small>
+      <button id="next-page" class="btn btn-outline-secondary btn-sm" {% if not requests.has_next %}disabled{% endif %}>Next</button>
+    </div>
+  </div>
+</div>
+
+<!--  JavaScript -->
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  let currentPage = {{ requests.number }};
+  let searchQuery = "";
+
+  function showToast(msg, success = true) {
+    const toast = document.createElement("div");
+    toast.className = `toast align-items-center text-white ${success ? 'bg-success' : 'bg-danger'} border-0 show position-fixed top-0 end-0 m-3`;
+    toast.style.zIndex = "9999";
+    toast.innerHTML = `<div class="d-flex"><div class="toast-body">${msg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+  }
+
+  function fetchRequests(page = 1, query = "") {
+    const url = `{% url 'retake_requests_list' %}?page=${page}&q=${encodeURIComponent(query)}`;
+    console.log("fetchRequests ->", url);
+    fetch(url, { headers: {"X-Requested-With": "XMLHttpRequest"} })
+      .then(res => {
+        if (!res.ok) {
+          console.error("retake_requests_list returned error", res.status, res.statusText);
+          // fallback: reload page with query param so server-side render handles it
+          window.location.href = `{% url 'retake_requests_list' %}?page=${page}&q=${encodeURIComponent(query)}`;
+          throw new Error("Network error");
+        }
+        return res.text();
+      })
+      .then(html => {
+        // If server returned full HTML page instead of fragment, detect by looking for <html> tag
+        if (html.trim().startsWith("<!doctype") || html.trim().startsWith("<html")) {
+          console.warn("Server returned full page HTML; falling back to full reload");
+          window.location.href = `{% url 'retake_requests_list' %}?page=${page}&q=${encodeURIComponent(query)}`;
+          return;
+        }
+        document.getElementById("requests-container").innerHTML = html;
+        currentPage = page;
+        bindActionButtons();
+        bindPagination();
+      })
+      .catch(err => {
+        console.error("fetchRequests error:", err);
+        showToast("Failed to load results. See console for details", false);
+      });
+  }
+
+  function bindActionButtons() {
+    document.querySelectorAll(".approve-btn, .deny-btn").forEach(btn => {
+      btn.removeEventListener("click", btn._handler); // defensive remove
+      const handler = function () {
+        const reqId = this.dataset.id;
+        const action = this.classList.contains("approve-btn") ? "approve" : "deny";
+        if (action === "deny" && !confirm("Are you sure you want to deny this request?")) return;
+        fetch("{% url 'handle_retake_request' 0 %}".replace("0", reqId), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-CSRFToken": "{{ csrf_token }}",
+            "X-Requested-With": "XMLHttpRequest"
+          },
+          body: new URLSearchParams({ decision: action })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            const row = document.querySelector(`#req-${reqId}`);
+            const badge = row.querySelector(".badge");
+            badge.classList.remove("bg-warning", "bg-success", "bg-danger");
+            badge.classList.add(action === "approve" ? "bg-success" : "bg-danger");
+            badge.innerText = action === "approve" ? "approved" : "denied";
+            row.querySelectorAll(".approve-btn, .deny-btn").forEach(b => b.remove());
+            showToast(data.message, true);
+          } else {
+            showToast(data.error || "Something went wrong", false);
+          }
+        }).catch(err => { console.error(err); showToast("Network error", false); });
+      };
+      btn.addEventListener("click", handler);
+      btn._handler = handler;
+    });
+  }
+
+  function bindPagination() {
+    document.getElementById("prev-page")?.addEventListener("click", () => {
+      if (currentPage > 1) fetchRequests(currentPage - 1, searchQuery);
+    });
+    document.getElementById("next-page")?.addEventListener("click", () => {
+      fetchRequests(currentPage + 1, searchQuery);
+    });
+  }
+
+  document.getElementById("search-bar").addEventListener("input", function () {
+    searchQuery = this.value.trim();
+    fetchRequests(1, searchQuery);
+  });
+
+  bindActionButtons();
+  bindPagination();
+});
+</script>
+
+<!-- <script>
+document.addEventListener("DOMContentLoaded", function () {
+  let currentPage = {{ requests.number }};
+  let searchQuery = "";
+
+  // Toast Notification
+  function showToast(msg, success = true) {
+    const toast = document.createElement("div");
+    toast.className = `toast align-items-center text-white ${success ? 'bg-success' : 'bg-danger'} border-0 show position-fixed top-0 end-0 m-3`;
+    toast.style.zIndex = "9999";
+    toast.innerHTML = `
+      <div class="d-flex">
+        <div class="toast-body">${msg}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+  }
+
+      // Fetch Page (AJAX) with error handling and fallback
+  function fetchRequests(page = 1, query = "") {
+    const url = `{% url 'retake_requests_list' %}?page=${page}&q=${encodeURIComponent(query)}`;
+    console.log("fetchRequests ->", url);
+    fetch(url, { headers: {"X-Requested-With": "XMLHttpRequest"} })
+      .then(res => {
+        if (!res.ok) {
+          console.error("retake_requests_list returned error", res.status, res.statusText);
+          // fallback: reload page with query param so server-side render handles it
+          window.location.href = `{% url 'retake_requests_list' %}?page=${page}&q=${encodeURIComponent(query)}`;
+          throw new Error("Network error");
+        }
+        return res.text();
+      })
+      .then(html => {
+        // If server returned full HTML page instead of fragment, detect by looking for <html> tag
+        if (html.trim().startsWith("<!doctype") || html.trim().startsWith("<html")) {
+          console.warn("Server returned full page HTML; falling back to full reload");
+          window.location.href = `{% url 'retake_requests_list' %}?page=${page}&q=${encodeURIComponent(query)}`;
+          return;
+        }
+        document.getElementById("requests-container").innerHTML = html;
+        currentPage = page;
+        bindActionButtons();
+        bindPagination();
+      })
+      .catch(err => {
+        console.error("fetchRequests error:", err);
+        showToast("Failed to load results. See console for details", false);
+      });
+  }
+
+  // Bind Approve / Deny Buttons
+  function bindActionButtons() {
+    document.querySelectorAll(".approve-btn, .deny-btn").forEach(btn => {
+      btn.addEventListener("click", function () {
+        const reqId = this.dataset.id;
+        const action = this.classList.contains("approve-btn") ? "approve" : "deny";
+        if (action === "deny" && !confirm("Are you sure you want to deny this request?")) return;
+
+        fetch("{% url 'handle_retake_request' 0 %}".replace("0", reqId), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-CSRFToken": "{{ csrf_token }}",
+            "X-Requested-With": "XMLHttpRequest"
+          },
+          body: new URLSearchParams({ decision: action })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            const row = document.querySelector(`#req-${reqId}`);
+            const badge = row.querySelector(".badge");
+            badge.classList.remove("bg-warning", "bg-success", "bg-danger");
+            badge.classList.add(action === "approve" ? "bg-success" : "bg-danger");
+            badge.innerText = action === "approve" ? "approved" : "denied";
+            row.querySelectorAll(".approve-btn, .deny-btn").forEach(b => b.remove());
+            showToast(data.message, true);
+          } else {
+            showToast(data.error || "Something went wrong", false);
+          }
+        })
+        .catch(err => showToast("⚠️ Network error", false));
+      });
+    });
+  }
+
+  // Bind Pagination Buttons
+  function bindPagination() {
+    document.getElementById("prev-page")?.addEventListener("click", () => {
+      if (currentPage > 1) fetchRequests(currentPage - 1, searchQuery);
+    });
+    document.getElementById("next-page")?.addEventListener("click", () => {
+      fetchRequests(currentPage + 1, searchQuery);
+    });
+  }
+
+  // Search Input
+  document.getElementById("search-bar").addEventListener("input", function () {
+    searchQuery = this.value.trim();
+    fetchRequests(1, searchQuery);
+  });
+
+  bindActionButtons();
+  bindPagination();
+});
+</script> -->
+{% endblock %}

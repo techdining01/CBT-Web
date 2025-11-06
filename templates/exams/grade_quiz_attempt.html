@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="fw-bold">✏️ Grade Quiz — {{ quiz.title }}</h2>
+    <a href="{% url 'teacher_dashboard' %}" class="btn btn-secondary">⬅ Back</a>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <p><strong>Student:</strong> {{ attempt.student.get_full_name }}</p>
+      <p><strong>Class:</strong> {{ attempt.student.student_class }}</p>
+      <p><strong>Quiz:</strong> {{ quiz.title }}</p>
+      <p><strong>Objective Score (Auto):</strong> {{ objective_score }}</p>
+    </div>
+  </div>
+
+  <form method="post" id="grading-form">
+    {% csrf_token %}
+    <div class="card mb-3">
+      <div class="card-header"><strong>Subjective Questions</strong></div>
+      <div class="card-body">
+        {% if subjective_answers %}
+          {% for ans in subjective_answers %}
+          <div class="mb-3">
+            <p><strong>Q{{ forloop.counter }}:</strong> {{ ans.question.text }}</p>
+            <p><em>Student Answer:</em> {{ ans.answer_text }}</p>
+            <input type="number" name="score_{{ ans.id }}" value="{{ ans.score|default_if_none:'' }}" min="0" step="0.5" class="form-control w-25" placeholder="Enter score" required>
+          </div>
+          <hr>
+          {% endfor %}
+        {% else %}
+          <p>No subjective answers found.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="text-center">
+      <button type="submit" class="btn btn-primary w-50 py-2">💾 Save Grades</button>
+    </div>
+  </form>
+</div>
+
+<script>
+document.getElementById("grading-form").addEventListener("submit", function(e){
+  e.preventDefault();
+  const formData = new FormData(this);
+  fetch(window.location.href, {
+    method: "POST",
+    headers: {"X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+              "X-Requested-With": "XMLHttpRequest"},
+    body: formData
+  }).then(r => r.json()).then(data => {
+    if(data.success){
+      alert(data.message);
+      window.location.reload();
+    } else {
+      alert("❌ Something went wrong.");
+    }
+  });
+});
+</script>
+{% endblock %}

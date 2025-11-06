@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto mt-10">
+    <!-- Quiz Card -->
+    <div class="bg-white shadow-lg rounded-2xl overflow-hidden border border-gray-200">
+        
+        <!-- Header -->
+        <div class="bg-indigo-600 text-white p-6">
+            <h1 class="text-3xl font-bold">{{ quiz.title }}</h1>
+            <p class="text-sm opacity-90 mt-1">
+                Subject: <span class="font-semibold">{{ quiz.subject.name }}</span>
+            </p>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 space-y-4">
+            <p class="text-gray-700">
+                <span class="font-semibold">Created by:</span> {{ quiz.created_by.get_full_name|default:quiz.created_by.username }}
+            </p>
+            <p class="text-gray-700">
+                <span class="font-semibold">Created at:</span> {{ quiz.created_at|date:"F j, Y, g:i a" }}
+            </p>
+            <p class="text-gray-700">
+                <span class="font-semibold">Class:</span> {{ quiz.class_obj.name }}
+            </p>
+            <p class="text-gray-700">
+                <span class="font-semibold">Total Questions:</span> {{ quiz.questions.count }}
+            </p>
+
+            {% if quiz.description %}
+            <div class="bg-gray-50 border-l-4 border-indigo-600 p-4 rounded">
+                <h3 class="font-semibold text-gray-800">Description</h3>
+                <p class="text-gray-600 mt-1">{{ quiz.description }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 bg-gray-100 flex justify-between items-center">
+            <a href="{% url 'manage_quizzes' %}" class="text-gray-600 hover:text-gray-900 text-sm font-medium">
+                ← Back to Exams
+            </a>
+
+            <a href="{% url 'take_quiz_page' quiz.id %}" 
+               class="bg-indigo-600 text-white px-5 py-2 rounded-lg shadow hover:bg-indigo-700 transition">
+                Take Exam
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="container my-4">
+  <div class="d-flex justify-content-between align-item-center mb-3">         
+    <h5></h5>   
+    <div>
+      <nav class="d-flex gap-3">
+      <a class="btn btn-warning btn-sm" href="{% url 'create_quiz' %}">Create Exam</a>
+      <a class="btn btn-success" href="{% url 'manage_quizzes' %} ">Manage exam</a>
+      <a class="btn btn-primary" href="{% url 'dashboard' %}">Dashboard</a>
+      </nav>     
+    </div>
+  </div>
+  <div class="row g-4">
+
+    <!-- 📘 Classes Panel -->
+    <div class="col-md-6">
+      <div class="card shadow-lg border-0 h-100">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">📘 Classes</h5>
+        </div>
+        <div class="card-body">
+          <div class="input-group mb-3">
+            <input type="text" id="class_name" class="form-control" placeholder="Enter new class name">
+            <button class="btn btn-success" onclick="createClass()">➕ Add</button>
+          </div>
+          <ul id="class-list" class="list-group"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 📗 Subjects Panel -->
+    <div class="col-md-6">
+      <div class="card shadow-lg border-0 h-100">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">📗 Subjects</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <input type="text" id="subject_name" class="form-control" placeholder="Enter new subject name">
+            </div>
+            <div class="col-4">
+              <select id="subject_class" class="form-select"></select>
+            </div>
+            <div class="col-2">
+              <button class="btn btn-primary w-100" onclick="createSubject()">➕ Add</button>
+            </div>
+          </div>
+          <ul id="subject-list" class="list-group"></ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toasts for feedback -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
+  <div id="toast" class="toast align-items-center text-bg-dark border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+const url = "/exams/class-subject/";
+
+// ✅ Toast helper
+function showToast(message, type="dark") {
+  let toastEl = document.getElementById("toast");
+  toastEl.className = `toast align-items-center text-bg-${type} border-0`;
+  toastEl.querySelector(".toast-body").innerText = message;
+  new bootstrap.Toast(toastEl).show();
+}
+
+async function refreshData() {
+  let res = await fetch(url);
+  let data = await res.json();
+
+  // Classes
+  let classList = document.getElementById("class-list");
+  classList.innerHTML = "";
+  data.classes.forEach(cls => {
+    classList.innerHTML += `
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <span contenteditable="true" 
+              onblur="updateClass(${cls.id}, this.innerText)">
+          ${cls.name}
+        </span>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteClass(${cls.id})">❌</button>
+      </li>`;
+  });
+
+  // Subjects
+  let subjectList = document.getElementById("subject-list");
+  subjectList.innerHTML = "";
+  data.subjects.forEach(sub => {
+    subjectList.innerHTML += `
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <span contenteditable="true"
+              onblur="updateSubject(${sub.id}, this.innerText, ${sub.school_class_id})">
+          ${sub.name}
+        </span>
+        <small class="text-muted">Class ${sub.school_class_id}</small>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteSubject(${sub.id})">❌</button>
+      </li>`;
+  });
+
+  // Dropdown
+  let dropdown = document.getElementById("subject_class");
+  dropdown.innerHTML = "";
+  data.classes.forEach(cls => {
+    dropdown.innerHTML += `<option value="${cls.id}">${cls.name}</option>`;
+  });
+}
+
+// ✅ CRUD Actions
+async function createClass() {
+  let name = document.getElementById("class_name").value;
+  if (!name) return showToast("Class name required", "warning");
+  await fetch(url, {method:"POST",body:JSON.stringify({action:"create_class", name}),headers:{"Content-Type":"application/json"}});
+  showToast("Class added ✅","success");
+  refreshData();
+}
+
+async function updateClass(id, newName) {
+  await fetch(url, {method:"POST",body:JSON.stringify({action:"update_class", id, name:newName}),headers:{"Content-Type":"application/json"}});
+  showToast("Class updated ✏️","info");
+  refreshData();
+}
+
+async function deleteClass(id) {
+  await fetch(url, {method:"POST",body:JSON.stringify({action:"delete_class", id}),headers:{"Content-Type":"application/json"}});
+  showToast("Class deleted ❌","danger");
+  refreshData();
+}
+
+async function createSubject() {
+  let name = document.getElementById("subject_name").value;
+  let class_id = document.getElementById("subject_class").value;
+  if (!name) return showToast("Subject name required","warning");
+  await fetch(url, {method:"POST",body:JSON.stringify({action:"create_subject", name, class_id}),headers:{"Content-Type":"application/json"}});
+  showToast("Subject added ✅","success");
+  refreshData();
+}
+
+async function updateSubject(id, newName, classId) {
+  await fetch(url, {method:"POST",body:JSON.stringify({action:"update_subject", id, name:newName, class_id:classId}),headers:{"Content-Type":"application/json"}});
+  showToast("Subject updated ✏️","info");
+  refreshData();
+}
+
+async function deleteSubject(id) {
+  await fetch(url, {method:"POST",body:JSON.stringify({action:"delete_subject", id}),headers:{"Content-Type":"application/json"}});
+  showToast("Subject deleted ❌","danger");
+  refreshData();
+}
+
+// Init
+refreshData();
+</script>
+{% endblock %} 

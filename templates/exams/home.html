@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE BRILLS SCHOOLS</title>
+
+    <style>
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body{
+    height: 100vh;
+    background-image:linear-gradient(rgba(0,0,0,0.6),rgba(0,0,0,0.6)), url('static/images/background.jpg');
+    background-position: center;
+    background-size:cover;
+    background-attachment: fixed;
+    position: relative;
+    align-items: center;
+    background-repeat: no-repeat;
+    overflow: hidden;
+
+}
+.school{
+    color: rgb(35, 7, 248);
+    font-size: 4rem;
+}
+
+img{
+    width: 300px;
+}
+
+</style>
+
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+
+    <link href="{% static 'css/styles.css' %}" rel="stylesheet"> 
+
+</head>
+<body>
+
+    <img src="{% static 'images/school_logo2.png' %}" alt="school logo" class="d-block mx-auto mt-5 mb-3 p-7 ">
+
+    <div class="container text-center">
+    
+        <h1 class="school">THE BRILLS SCHOOLS</h1><br>
+    
+    </div>
+    <div class="container text-center mt-5">
+        <a class="btn btn-primary" href="{% url 'signup' %}">Signup</a>
+        <a class="btn btn-warning" href="{% url 'login' %}">Login</a>
+    </div>
+</body>
+    <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+
+</html>
+
+
+
+
+
+

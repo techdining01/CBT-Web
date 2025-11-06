@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <div class="card shadow border-0">
+    <!-- Header -->
+    <div class="card-header bg-warning text-dark">
+      <h4 class="mb-0">🔄 Request Retake</h4>
+    </div>
+
+    <!-- Body -->
+    <div class="card-body">
+      <h5 class="card-title">{{ attempt.quiz.title }}</h5>
+      <p><strong>Subject:</strong> {{ attempt.quiz.subject.name }}</p>
+      <p><strong>Class:</strong> {{ attempt.quiz.subject.school_class }}</p>
+      <p><strong>Attempt Date:</strong> {{ attempt.submitted_at|date:"M d, Y H:i" }}</p>
+      <p><strong>Status:</strong>
+        {% if attempt.completed %}
+          <span class="badge bg-success">Submitted</span>
+        {% else %}
+          <span class="badge bg-secondary">Ongoing</span>
+        {% endif %}
+      </p>
+      <p><strong>Score:</strong> {{ attempt.score }} / {{ attempt.quiz.total_marks }}</p>
+    </div>
+
+    <!-- Request Retake -->
+    <div class="card-body">
+      {% if attempt.retake_requested %}
+        <div class="alert alert-info">
+          ✅ You have already requested a retake. Please wait for approval.
+        </div>
+      {% elif attempt.can_retake %}
+        <div class="alert alert-success">
+          ✅ Retake approved! You can retake this exam.
+        </div>
+        <a href="{% url 'take_quiz' attempt.quiz.id %}" class="btn btn-primary">Start Retake</a>
+      {% else %}
+        <form method="post" action="{% url 'request_retake' quiz.id %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-warning">
+            🔄 Request Retake
+          </button>
+        </form>
+      {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <div class="card-footer bg-light d-flex justify-content-between">
+      <a href="{% url 'student_dashboard' %}" class="btn btn-dark">← Back to Dashboard</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

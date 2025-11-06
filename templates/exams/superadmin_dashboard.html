@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %} SuperAdmin Dashboard {% endblock title %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <h1 class="fw-bold mb-3"> 👑👑👑 SuperAdmin Dashboard</h1>
+          <nav class="d-flex gap-3">
+            <a class="btn btn-success" style="width: 80px; height: 40px;font-size: .95rem;" href="{% url 'user_approval_list' %}">Approval</a>
+          </nav>
+        </div>
+      <br>
+       <!-- Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>✅ Approved</h5>
+                    <p>{{ approved }}</p>
+                </div>
+            </div>
+        </div>
+          <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>👥 Pended</h5>
+                    <p>{{ pended }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5> 🛠️ Admins</h5>
+                    <p>{{ total_admins }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5> 🧑🏿‍🏫 Teachers</h5>
+                    <p>{{ teachers }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>🧑🏼‍🎓 Students</h5>
+                    <p>{{ students }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5> 📚 Quizzes</h5>
+                    <p>{{ total_quizzes }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5> 📖 Subjects</h5>
+                    <p>{{ total_subjects }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>🏫 Classes</h5>
+                    <p>{{ total_classes }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="card mb-4">
+        <div class="card-header">🏆 Leaderboard</div>
+        <div class="card-body">
+            <ol>
+                {% for student in leaderboard %}
+                    <li>{{ student.username }} - {{ student.score }} points</li>
+                {% empty %}
+                    <p>No leaderboard data yet.</p>
+                {% endfor %}
+            </ol>
+        </div>
+    </div>
+
+    <!-- Quiz Management -->
+    <div class="card mb-4">
+        <div class="card-header">📚 Manage Quizzes</div>
+        <div class="card-body">
+            <a href="{% url 'create_quiz_page' %}" class="btn btn-success">➕ Add Quiz</a>
+            <a href="{% url 'manage_quizzes' %}" class="btn btn-primary">⚙️ Manage Quizzes</a>
+        </div>
+    </div>
+
+    <!-- User Management -->
+    <div class="card mb-4">
+        <div class="card-header">👤 Manage Users</div>
+        <div class="card-body">
+            <a href="{% url 'create_user' %}" class="btn btn-success">➕ Create User</a>
+            <a href="{% url 'manage_users' %}" class="btn btn-primary">⚙️ Manage Users</a>
+        </div>
+    </div>
+
+    <!-- Broadcast -->
+    <div class="card mb-4">
+        <div class="card-header">📢 Broadcast to Teachers & Students</div>
+        <div class="card-body">
+            <form method="post" action="{% url 'send_broadcast' %}">
+                {% csrf_token %}
+                <textarea name="message" class="form-control mb-2" placeholder="Write your message"></textarea>
+                <button type="submit" class="btn btn-primary">Send</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

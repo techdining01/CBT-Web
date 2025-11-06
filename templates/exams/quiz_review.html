@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    
+  <div class="d-flex justify-content-between align-items-center mt-3">
+    <div>
+      <h3>Review — {{ attempt.quiz.title }}</h3>
+    <p>Student: {{ attempt.student.get_full_name|default:attempt.student.username }}</p>
+    </div>
+      <nav class="d-flex gap-3">
+        <a class="btn btn-primary btn-sm" style="width: auto; height: 40px;font-size: auto;" href="{% url 'quiz_result' attempt.id %}">Result</a>
+        <a class="btn btn-dark" style="width: auto; height: 40px;font-size: auto;" href="{% url 'dashboard' %}">Back</a>
+      </nav>
+    </div>
+  <br>
+
+  <div>
+    {% for ans in answers %}
+      <div class="card mb-2">
+        <div class="card-body">
+          <p><strong>Q:</strong> {{ ans.question.text }}</p>
+          <p><strong>Your answer:</strong>
+            {% if ans.question.question_type == 'objective' %}
+                {% if ans.selected_choice %}
+                  {{ ans.selected_choice.text }} </p>
+                  <p><strong>Marks awarded:</strong> {{ ans.obtained_marks }}</p>
+                  <p><small class="text-muted">Graded by: Autograded</small></p>
+                {% else %}
+                    "No answer"
+                {% endif %}
+            {% else %}
+            <p>{{ ans.text_answer|default:"No answer" }}</p>
+            <p><strong>Feedback:</strong> {{ ans.feedback|default:"-" }}</p>
+            <p><small class="text-muted">Graded by: {{ ans.graded_by }}</small></p>
+            {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,59 @@
+<table id="attempts-table" class="table">
+  <thead>
+    <tr>
+      <th>Student</th>
+      <th>Quiz</th>
+      <th>Score</th>
+      <th>Completed</th>
+      <th>Retake Count</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for attempt in attempts %}
+    <tr id="attempt-{{ attempt.id }}">
+      <td>{{ attempt.student.username }}</td>
+      <td>{{ attempt.quiz.title }}</td>
+      <td>{{ attempt.score }}</td>
+      <td>{{ attempt.completed }}</td>
+      <td>{{ attempt.retake_count }}</td>
+      <td>
+        <button class="approve-retake-btn btn btn-warning"
+                data-quiz="{{ attempt.quiz.id }}"
+                data-student="{{ attempt.student.id }}">
+          Approve Retake
+        </button>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<script>
+document.querySelectorAll(".approve-retake-btn").forEach(btn => {
+  btn.addEventListener("click", function() {
+    const quizId = this.dataset.quiz;
+    const studentId = this.dataset.student;
+
+    fetch(`/exams/quiz/${quizId}/approve-retake/${studentId}/`, {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}",
+        "Content-Type": "application/json"
+      },
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert(data.message);
+        // Update row in table dynamically
+        const row = document.querySelector(`#attempt-${studentId}`);
+        if (row) {
+          row.querySelector("td:nth-child(5)").innerText = data.retake_count;
+        }
+      } else {
+        alert("Error: " + (data.error || "Could not approve retake"));
+      }
+    });
+  });
+});
+</script>

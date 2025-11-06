@@ -1,0 +1,960 @@
+{% extends "base.html" %} {% load static %}
+{% block title %} Admin Dashboard {% endblock title %}
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h3 class="d-inline ms-2 fw-bold">🛠️ Admin Dashboard</h3>
+    </div>
+    <div class="d-flex align-items-center">
+      <a href="{% url 'manage_quizzes' %}" class="btn btn-success btn-sm me-2">Advance</a>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="row" id="stats-container"></div>
+
+  <div class="row mt-3">
+    <div class="col-md-7">
+      <!-- Pending Users -->
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between">
+          <strong>Pending Users</strong>
+          <small>Auto-refresh every 10s</small>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Joined</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="pending-users"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Quizzes list (paginated) -->
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between">
+          <strong>Available Exams</strong><small>Auto-refresh every 10s</small>
+        </div>
+        <div class="card-body">
+          <div id="quizzes-list"></div>
+          <nav>
+            <ul class="pagination" id="quizzes-pagination"></ul>
+          </nav>
+        </div>
+      </div>
+
+      <!-- Grading -->
+        <div class="card shadow-sm">
+          <div class="card-header bg-warning fw-bold d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Student Exam Attempts</span>
+            <input type="text" id="searchInput" class="form-control form-control-sm w-25"
+              placeholder="Search student...">
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-striped mb-0 align-middle" id="attemptsTable">
+            <thead class="table-light">
+              <tr>
+                <th>Student</th>
+                <th>Exam</th>
+                <th>Score</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for attempt in grading %}
+              <tr id="row-{{ attempt.id }}">
+                <td>{{ attempt.full_name }}</td>
+                <td>{{ attempt.quiz.title }}</td>
+                <td class="score">{{ attempt.score|default:"-" }}</td>
+                <td class="status">
+                  {% if attempt.graded %}
+                  <span class="badge bg-success">Graded</span>
+                  {% else %}
+                  <span class="badge bg-warning text-dark">Pending</span>
+                  {% endif %}
+                </td>
+                <td>{{ attempt.submitted_at}}</td>
+                <td>
+                  {% if not attempt.graded %}
+                  <button class="btn btn-sm btn-primary grade-btn" data-attempt-id="{{ attempt.id }}"
+                    data-bs-toggle="modal" data-bs-target="#gradeModal">
+                    Grade
+                  </button>
+                  {% else %}
+                  <span class="text-muted">Done</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!--Table Pagination  -->
+        <div class="card-footer d-flex justify-content-between">
+          <button class="btn btn-sm btn-outline-secondary" id="grade-prev">Prev</button>
+          <small id="grade-pager"></small>
+          <button class="btn btn-sm btn-outline-secondary" id="grade-next">Next</button>
+        </div>
+        <br>
+
+            <!-- Modal -->
+      <div class="modal fade" id="gradeModal" tabindex="-1" aria-labelledby="gradeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-light">
+              <h5 class="modal-title fw-semibold" id="gradeModalLabel">Grade Attempt</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="gradeModalBody">
+              <div class="text-center p-3 text-muted">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div class="card mb-3">
+        <div class="card-header"><strong>Leaderboard (Best per class)</strong></div>
+        <div class="card-body p-0">
+          <table class="table mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Student</th>
+                <th>Full Name</th>
+                <th>Class</th>
+                <th>Avg Score</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Class Performance Chart -->
+      <div class="card mb-3">
+        <div class="card-header"><strong>Class Performance</strong></div>
+        <div class="card-body">
+          <canvas id="classPerformanceChart" height="400"></canvas>
+        </div>
+      </div>
+
+      <div id="admin-dashboard" class="mt-3"></div>
+    </div>
+
+    <div class="col-md-5">
+      <!-- Notifications -->
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>Notifications</strong>
+        </div>
+        <ul class="list-group list-group-flush" id="admin-notifications"></ul>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+          <div>
+            <button id="notif-prev" class="btn btn-sm btn-outline-secondary">Prev</button>
+            <button id="notif-next" class="btn btn-sm btn-outline-secondary">Next</button>
+          </div>
+          <small id="notif-pager">Page 1</small>
+        </div>
+      </div>
+
+      <!-- Broadcast -->
+      <div class="card mb-3 p-2">
+        <div class="card-header"><strong>Broadcast Message</strong></div>
+        <div class="card-body">
+          <form id="broadcastForm">
+            <div class="mb-2">
+              <label class="form-label">Send to</label>
+              <select name="role" id="broadcastRole" class="form-select">
+                <option value="student">Students</option>
+                <option value="teacher">Teachers</option>
+                <option value="superadmin">Superadmin</option>
+              </select>
+            </div>
+            <div class="mb-2">
+              <textarea id="broadcastMessage" class="form-control" rows="3" placeholder="Write message..."></textarea>
+            </div>
+            <div class="form-group">
+              <button type="submit" class="btn btn-primary">
+                Send Broadcast
+              </button>
+            </div>
+            <div id="broadcastResult" class="mt-2"></div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header">
+          <strong>Generate Class Reports</strong>
+        </div>
+        <div class="card-body">
+          <table class="table table-bordered align-middle">
+            <thead>
+              <tr>
+                <th>Class Name</th>
+                <th>Students</th>
+                <th>Generate Report</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for cls in classes %}
+              <tr>
+                <td>{{ cls.name }}</td>
+                <td>{{ cls.student_class.count }}</td>
+                <td>
+                  <a href="{% url 'admin_classes_report_pdf' cls.id %}" class="btn btn-sm btn-success">
+                    <i class="bi bi-file-earmark-pdf"></i> Generate Report
+                  </a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="3" class="text-center text-muted">No classes found.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <small class="text-muted">Generates PDF reports of student performances per class.</small>
+          <a href="{% url 'admin_report_generator' %}" class="btn btn-warning btn-sm mb-2 p-2 fw-semi-bold w-100">Download Advance Report (PDF)</a>
+        </div> 
+      </div>
+
+      <!-- User & Quiz Management -->
+      <div class="card mt-3">
+        <div class="card-header d-flex justify-content-between">
+          <strong>User Management</strong>
+        </div>
+        <div class="card-body">
+          <a href="{% url 'create_user' %}" class="btn btn-primary sm">Create User</a>
+          <a href="{% url 'manage_users' %}" class="btn btn-success sm">Manage Users</a>
+          <a href="{% url 'manage_classes_subjects' %}" class="btn btn-warning sm">Manage Classes & Subjects</a>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-header d-flex justify-content-between">
+          <strong>Exams Management</strong>
+        </div>
+        <div class="card-body">
+          <a href="{% url 'create_quiz' %}" class="btn btn-primary sm">Create Exam</a>
+          <a href="{% url 'manage_quizzes' %}" class="btn btn-success sm">Manage Exams</a>
+          <a href="{% url 'retake_requests_list' %}" class="btn btn-warning sm">Allow retake exam</a>
+        </div>
+      </div>
+
+      <!-- Recent actions (paginated) -->
+      <div class="card mt-3">
+        <div class="card-header d-flex justify-content-between">
+          <strong>Recent Actions</strong>
+          <div>
+            <small>Page: </small>
+            <input id="logsPage" type="number" value="1" min="1" style="width: 70px"
+              class="form-control d-inline-block" />
+          </div>
+        </div>
+        <ul class="list-group list-group-flush" id="logs"></ul>
+        <div class="card-body">
+          <small class="text-muted">Actions are logged for auditing.</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quiz Detail Modal -->
+  <div class="modal fade" id="quizDetailModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Exam Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="quizDetailModalBody"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% block extra_js %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  const DATA_URL = "{% url 'admin_dashboard_data' %}";
+  const csrftoken = "{{ csrf_token }}";
+
+  let performanceChartInstance = null;
+  let notifPage = 1;
+  const notifPageSize = 5;
+  let latestNotifications = [];
+
+  function formatDate(d) {
+    try { return new Date(d).toLocaleString(); } catch { return ""; }
+  }
+
+  function renderLeaderboard(list) {
+    const tbody = document.getElementById("leaderboard");
+    if (!tbody) return;
+    if (!Array.isArray(list) || list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No data</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map((l, idx) => {
+      const avg = Number(l.avg_score ?? 0).toFixed(2);
+      const name = (l.first_name || "") + (l.last_name ? (" " + l.last_name) : "");
+      return `<tr>
+        <td>${idx + 1}</td>
+        <td>${l.username || l.student || name}</td>
+        <td>${name}</td>
+        <td>${l.class_name || l.class || l.className || 'Unknown'}</td>
+        <td>${avg}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function normalizePerformanceData(payload) {
+    const src = payload.class_performance || payload.performance || payload.classPerformance || [];
+    return (src || []).map(r => ({
+      label: r.class_name || r.class || r.className || 'Unknown',
+      value: Number(r.avg_score ?? r.avg ?? r.value ?? 0)
+    }));
+  }
+
+  function renderPerformanceChartFromResponse(payload) {
+    const canvas = document.getElementById('classPerformanceChart');
+    if (!canvas) return;
+    const items = normalizePerformanceData(payload);
+    const labels = items.map(i => i.label);
+    const values = items.map(i => i.value);
+
+    if (!items.length) {
+      if (performanceChartInstance) {
+        performanceChartInstance.data.labels = [];
+        performanceChartInstance.data.datasets[0].data = [];
+        performanceChartInstance.update();
+      }
+      return;
+    }
+
+    if (performanceChartInstance) {
+      performanceChartInstance.data.labels = labels;
+      performanceChartInstance.data.datasets[0].data = values;
+      performanceChartInstance.update();
+      return;
+    }
+
+    performanceChartInstance = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Avg score (%)',
+          data: values,
+          backgroundColor: 'rgba(54,162,235,0.6)',
+          borderColor: 'rgba(54,162,235,1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, suggestedMax: 100 } },
+        plugins: { legend: { display: false } }
+      }
+    });  
+  }
+      
+
+  // render current page of notifications (client-side pagination)
+  function renderNotifications() {
+    const container = document.getElementById("admin-notifications" );
+    const pager = document.getElementById("notif-pager");
+    if (!container || !pager) return;
+    const total = latestNotifications.length || 0;
+    const totalPages = Math.max(1, Math.ceil(total / notifPageSize));
+    if (notifPage < 1) notifPage = 1;
+    if (notifPage > totalPages) notifPage = totalPages;
+    if (total === 0) {
+      container.innerHTML = '<li class="list-group-item text-muted">No notifications</li>';
+      pager.innerText = 'Page 0 of 0';
+      document.getElementById("notif-prev").disabled = true;
+      document.getElementById("notif-next").disabled = true;
+      return;
+    }
+    const start = (notifPage - 1) * notifPageSize;
+    const slice = latestNotifications.slice(start, start + notifPageSize);
+    container.innerHTML = slice.map(n => `<li class="list-group-item">${n.message} <div class="small text-muted">${formatDate(n.created_at)}</div></li>`).join('');
+    pager.innerText = `Page ${notifPage} of ${totalPages}`;
+    document.getElementById("notif-prev").disabled = notifPage <= 1;
+    document.getElementById("notif-next").disabled = notifPage >= totalPages;
+  }
+
+  async function fetchDashboard(page_logs = 1, page_quizzes = 1) {
+    try {
+      const url = new URL(DATA_URL, window.location.origin);
+      url.searchParams.set("logs_page", page_logs);
+      url.searchParams.set("quizzes_page", page_quizzes);
+      url.searchParams.set("logs_page_size", 5);
+      url.searchParams.set("quizzes_page_size", 6);
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch dashboard data');
+      const data = await res.json();
+
+      // Stats
+      const s = data.stats || {};
+      document.getElementById("stats-container").innerHTML = `
+        <div class="col-md-3"><div class="card p-2 mb-3 text-center text-white  bg-primary" >Total Users<br><strong>${s.total_users || 0}</strong></div></div>
+        <div class="col-md-3"><div class="card p-2 mb-3 text-center text-white  bg-success" >Admins<br><strong>${s.admins || 0}</strong></div></div>
+        <div class="col-md-3"><div class="card p-2 mb-3 text-center text-grey  bg-warning" >Teachers<br><strong>${s.teachers || 0}</strong></div></div>
+        <div class="col-md-3"><div class="card p-2 mb-3 text-center text-grey  bg-info" >Students<br><strong>${s.students || 0}</strong></div></div> 
+        <div class="col-md-3"><div class="card p-2 mb-3 text-center text-white  bg-primary" >Pending<br><strong>${s.pending_users || 0}</strong></div></div>
+        <div class="col-md-3"><div class="card p-2 mb-3 text-center text-white  bg-success" >Exams<br><strong>${s.quizzes || 0}</strong></div></div>
+        <div class="col-md-3"><div class="card p-2 mb-3 text-center text-grey  bg-warning">Subjects<br><strong>${s.subjects || 0}</strong></div></div>
+        <div class="col-md-3"><div class="card p-2 mb-3 text-center text-grey  bg-info">Classes<br><strong>${s.classes || 0}</strong></div></div>
+      `;
+
+      // Pending users
+      document.getElementById("pending-users").innerHTML = (data.pending_list || []).map(u => `
+        <tr>
+          <td>${u.username}</td>
+          <td>${u.email}</td>
+          <td>${u.role}</td>
+          <td>${formatDate(u.date_joined)}</td>
+          <td>
+            <button class="btn btn-success btn-sm" onclick="updateUserStatus(${u.id}, 'approve')">Approve</button>
+            <button class="btn btn-danger btn-sm" onclick="updateUserStatus(${u.id}, 'reject')">Reject</button>
+            <button class="btn btn-secondary btn-sm" onclick="updateUserStatus(${u.id}, 'pending')">Pend</button>
+          </td>
+        </tr>
+      `).join('') || '<tr><td colspan="5" class="text-center text-muted">No pending users</td></tr>';
+
+      // Quizzes list
+      const quizzes = data.quizzes || [];
+      document.getElementById("quizzes-list").innerHTML = quizzes.map(q => `
+        <div class="border p-2 mb-2">
+          <div class="d-flex justify-content-between">
+            <div><strong>${q.title}</strong> <div class="small text-muted">${q.subject} • ${q.class_name}</div></div>
+            <div>
+              <small class="d-block">By ${q.created_by}</small>
+              <small class="d-block">${formatDate(q.start_time)} - ${formatDate(q.end_time)}</small>
+              <button id="publish-btn-${q.id}" class="btn btn-sm ${q.is_published ? "btn-outline-danger" : "btn-outline-primary"} mt-1" onclick="togglePublish(${q.id})">${q.is_published ? "Unpublish" : "Publish"}</button>
+              <a href="#" class="btn btn-sm btn-outline-secondary mt-1" onclick="viewQuiz(${q.id}); return false;">View</a>
+            </div>
+          </div>
+        </div>
+      `).join('') || '<div class="text-muted">No quizzes</div>';
+
+      // Quizzes pagination
+      const quizzesPages = data.quizzes_total_pages || 1;
+      let pagHtml = "";
+      for (let i = 1; i <= quizzesPages; i++) {
+        pagHtml += `<li class="page-item ${i === page_quizzes ? "active" : ""}"><a class="page-link" href="#" onclick="fetchDashboard(${document.getElementById("logsPage").value || 1}, ${i}); return false;">${i}</a></li>`;
+      }
+      document.getElementById("quizzes-pagination").innerHTML = pagHtml;
+
+      // Leaderboard (best in each class)
+      renderLeaderboard(data.leaderboard || []);
+
+      // Logs
+      const logs = data.logs || [];
+      document.getElementById("logs").innerHTML = logs.map(l => {
+        let detailsHtml = "";
+        if (l.details) {
+          for (const [k, v] of Object.entries(l.details)) detailsHtml += `<div><strong>${k}:</strong> ${JSON.stringify(v)}</div>`;
+        }
+        return `<li class="list-group-item"><strong>${l.user} — ${l.action_type}</strong> - ${detailsHtml}<div class="small text-muted">${formatDate(l.timestamp)}</div></li>`;
+      }).join('') || '<li class="list-group-item text-muted">No logs</li>';
+
+      // Notifications — client-side pagination
+      latestNotifications = Array.isArray(data.notifications) ? data.notifications : [];
+      notifPage = 1;
+      renderNotifications();
+
+      // Render class performance chart
+      try { renderPerformanceChartFromResponse(data); 
+        
+      } catch (e) { 
+        console.error("Chart render error", e); }
+
+    } catch (err) {
+      console.error(err);
+      // optional: show a toast or message to user
+    }
+  }
+      
+
+
+// attach grade modal handlers
+    function attachGradeHandlers(){
+      const modalBody = document.getElementById('gradeModalBody');
+      document.querySelectorAll('.grade-btn').forEach(btn=>{
+        if(btn._attached) return;
+        btn._attached = true;
+        btn.addEventListener('click', function(){
+          const attemptId = this.dataset.attemptId;
+          modalBody.innerHTML = '<div class="text-center p-3 text-muted">Loading...</div>';
+          fetch(`/exams/teacher/grade/${attemptId}/`, { headers:{ 'X-Requested-With':'XMLHttpRequest' } })
+            .then(res=>{ if(!res.ok) throw new Error('Network response was not ok'); return res.text(); })
+            .then(html=> modalBody.innerHTML = html)
+            .catch(err=>{ console.error(err); modalBody.innerHTML = `<div class="text-danger text-center">Error loading form</div>`; });
+        });
+      });
+    }
+
+    // render grading table and update pager UI
+    function renderGradingTable(attempts, pagination){
+      const tbody = document.querySelector('#attemptsTable tbody');
+      if(!tbody) return;
+      const rowsHtml = (attempts||[]).map(attempt=>{
+        const date = attempt.submitted_at ? new Date(attempt.submitted_at).toLocaleString() : '';
+        const score = (attempt.total_score !== undefined) ? attempt.total_score : (attempt.score ?? '-');
+        return `<tr id="row-${attempt.id}"><td>${escapeHtml(attempt.full_name||attempt.student_name||attempt.student||'')}</td><td>${escapeHtml(attempt.quiz||attempt.quiz_title||'')}</td><td class="score">${score ?? '-'}</td><td class="status">${attempt.graded ? '<span class="badge bg-success">Graded</span>' : '<span class="badge bg-warning text-dark">Pending</span>'}</td><td>${date}</td><td>${attempt.graded ? '<span class="text-muted">Done</span>' : `<button class="btn btn-sm btn-primary grade-btn" data-attempt-id="${attempt.id}" data-bs-toggle="modal" data-bs-target="#gradeModal">Grade</button>`}</td></tr>`;
+      }).join('');
+      tbody.innerHTML = rowsHtml || '<tr><td colspan="6" class="text-center text-muted">No attempts</td></tr>';
+
+      // update pager UI
+      const pageNum = pagination?.grade_page_number ?? pagination?.page ?? gradePage;
+      const pageTotal = pagination?.grade_num_pages ?? pagination?.num_pages ?? 1;
+      const pager = document.getElementById('grade-pager');
+      if(pager) pager.innerText = `Page ${pageNum} of ${pageTotal}`;
+      const prevBtn = document.getElementById('grade-prev');
+      const nextBtn = document.getElementById('grade-next');
+      if(prevBtn) prevBtn.disabled = pageNum <= 1;
+      if(nextBtn) nextBtn.disabled = pageNum >= pageTotal;
+
+      // update other pagers if present
+      const quizzesPager = document.getElementById('quizzes-pager'); if(quizzesPager) quizzesPager.innerText = `Page ${pagination?.quiz_page_number ?? 1} of ${pagination?.quiz_num_pages ?? 1}`;
+      const notifPager = document.getElementById('notif-pager'); if(notifPager) notifPager.innerText = `Page ${pagination?.notif_page_number ?? 1} of ${pagination?.notif_num_pages ?? 1}`;
+      const broadcastPager = document.getElementById('broadcast-pager'); if(broadcastPager) broadcastPager.innerText = `Page ${pagination?.broadcast_page_number ?? 1} of ${pagination?.broadcast_num_pages ?? 1}`;
+
+      attachGradeHandlers();
+    }
+
+
+  // Update user status via POST
+  async function updateUserStatus(userId, status) {
+    const resp = await fetch(DATA_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken,
+      },
+      body: JSON.stringify({
+        action_type: "update_user_status",
+        user_id: userId,
+        status: status,
+      }),
+    });
+    const d = await resp.json();
+    if (d.ok) {
+      fetchDashboard();
+    } else {
+      alert(d.error || "Error");
+    }
+  }
+
+  // Broadcast form handler
+  document.addEventListener('DOMContentLoaded', function () {
+    // bind notification pager buttons
+    document.getElementById("notif-prev")?.addEventListener("click", function () {
+      if (notifPage > 1) { notifPage--; renderNotifications(); }
+    });
+    document.getElementById("notif-next")?.addEventListener("click", function () {
+      const totalPages = Math.max(1, Math.ceil((latestNotifications.length || 0) / notifPageSize));
+      if (notifPage < totalPages) { notifPage++; renderNotifications(); }
+    });
+
+    document.getElementById("broadcastForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const role = document.getElementById("broadcastRole").value;
+      const message = document.getElementById("broadcastMessage").value.trim();
+      if (!message) { alert("Message empty"); return; }
+      const resp = await fetch(DATA_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+        body: JSON.stringify({ action_type: "broadcast", role: role, message: message })
+      });
+      const d = await resp.json();
+      document.getElementById("broadcastResult").innerText = d.ok ? d.message : (d.error || "Error sending broadcast");
+      if (d.ok) {
+        document.getElementById("broadcastMessage").value = "";
+        fetchDashboard();
+      }
+    });
+
+
+    document.getElementById("logsPage").addEventListener("change", function () {
+      const p = parseInt(this.value) || 1;
+      fetchDashboard(p, 1);
+    });
+
+    // initial load & interval
+    fetchDashboard();
+    setInterval(() => fetchDashboard(parseInt(document.getElementById("logsPage").value || 1, 10), 1), 10000);
+  });
+
+  // Quiz helpers
+  function getCSRFToken() {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.startsWith("csrftoken=")) {
+          cookieValue = decodeURIComponent(cookie.substring("csrftoken=".length));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  async function togglePublish(quizId) {
+    try {
+      const res = await fetch(`/exams/api/quizzes/${quizId}/toggle-publish/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
+      });
+      const data = await res.json();
+      if (data.ok) fetchDashboard();
+      else alert("Error: " + (data.error || "Unknown error"));
+    } catch (err) { alert("Error updating exam status."); }
+  }
+
+  async function viewQuiz(quizId) {
+    try {
+      const res = await fetch(`/exams/api/quizzes/${quizId}/`);
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById("quizDetailModalBody").innerHTML = `
+          <p><strong>Title:</strong> ${data.quiz.title}</p>
+          <p><strong>Subject:</strong> ${data.quiz.subject}</p>
+          <p><strong>Class:</strong> ${data.quiz.class_name}</p>
+          <p><strong>Duration:</strong> ${data.quiz.duration_minutes} minutes</p>
+          <p><strong>Published:</strong> ${data.quiz.is_published ? "✅ Yes" : "❌ No"}</p>
+        `;
+        new bootstrap.Modal(document.getElementById("quizDetailModal")).show();
+      } else {
+        alert("Error: " + (data.error || "Could not fetch exam details"));
+      }
+    } catch (err) {
+      alert("Failed to load exam details.");
+    }
+  }
+  
+
+        
+      (() => {
+        const API_GRADING = "{% url 'api_admin_grading_page' %}";
+        const GRADE_POST_URL_BASE = "/exams/teacher/grade/"; // append attempt_id + '/'
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken') || '';
+
+        // state
+        let gradePage = 1;
+        const pageSize = 8;
+
+        // helper to get cookie (in case)
+        function getCookie(name) {
+          let cookieValue = null;
+          if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+              const cookie = cookies[i].trim();
+              if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+              }
+            }
+          }
+          return cookieValue;
+        }
+
+        function formatDate(iso) {
+          if (!iso) return '';
+          try { return new Date(iso).toLocaleString(); } catch(e){ return iso; }
+        }
+
+        // render rows array -> table body
+        function renderGradingRows(attempts) {
+          const tbody = document.querySelector('#attemptsTable tbody');
+          if (!tbody) return;
+          if (!attempts || attempts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No attempts</td></tr>';
+            return;
+          }
+          tbody.innerHTML = attempts.map(a => {
+            const score = (a.score !== null && a.score !== undefined) ? a.score : '-';
+            const statusHtml = a.graded ? '<span class="badge bg-success">Graded</span>' : '<span class="badge bg-warning text-dark">Pending</span>';
+            const actionHtml = a.graded ? '<span class="text-muted">Done</span>' :
+              `<button class="btn btn-sm btn-primary grade-btn" data-attempt-id="${a.id}" data-bs-toggle="modal" data-bs-target="#gradeModal">Grade</button>`;
+            return `<tr id="row-${a.id}">
+              <td>${escapeHtml(a.student_name)}</td>
+              <td>${escapeHtml(a.quiz_title)}</td>
+              <td class="score">${score}</td>
+              <td class="status">${statusHtml}</td>
+              <td>${formatDate(a.submitted_at)}</td>
+              <td>${actionHtml}</td>
+            </tr>`;
+          }).join('');
+          attachGradeHandlers(); // bind events
+        }
+
+        function escapeHtml(str) {
+          if (!str && str !== 0) return '';
+          return String(str).replace(/[&<>"'`=\/]/g, function (s) {
+            return ({
+              '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
+              "'": '&#39;', '/':'&#x2F;', '`':'&#x60;', '=':'&#x3D;'
+            })[s];
+          });
+        }
+
+        // fetch a page from server
+        async function fetchGradingPage(page = 1) {
+          try {
+            const url = new URL(API_GRADING, window.location.origin);
+            url.searchParams.set('page', page);
+            url.searchParams.set('page_size', pageSize);
+            const res = await fetch(url.toString(), { credentials: 'same-origin' });
+            if (!res.ok) throw new Error('Network error');
+            const json = await res.json();
+            if (!json.ok) throw new Error('Server error');
+
+            // render
+            renderGradingRows(json.grading || []);
+            // pager update
+            const pager = document.getElementById('grade-pager');
+            const prevBtn = document.getElementById('grade-prev');
+            const nextBtn = document.getElementById('grade-next');
+
+            const p = json.pagination || {};
+            pager.textContent = `Page ${p.page} of ${p.num_pages || 1}`;
+            prevBtn.disabled = !p.has_previous;
+            nextBtn.disabled = !p.has_next;
+
+            // set current page
+            gradePage = p.page || 1;
+
+          } catch (err) {
+            console.error(err);
+            // show fallback row
+            const tbody = document.querySelector('#attemptsTable tbody');
+            if(tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Failed to load attempts</td></tr>';
+          }
+        }
+
+        // attach Grade button handlers (called after rows are rendered)
+        function attachGradeHandlers() {
+          document.querySelectorAll('.grade-btn').forEach(btn => {
+            // avoid multiple listeners — remove old if present
+            btn.onclick = async function () {
+              const attemptId = this.dataset.attemptId;
+              const modalBody = document.getElementById('gradeModalBody');
+              modalBody.innerHTML = '<div class="text-center p-3 text-muted">Loading...</div>';
+
+              try {
+                const res = await fetch(GRADE_POST_URL_BASE + attemptId + '/', {
+                  headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                  credentials: 'same-origin'
+                });
+                if (!res.ok) {
+                  modalBody.innerHTML = `<div class="text-danger p-3">Failed to load grading form</div>`;
+                  return;
+                }
+                const html = await res.text();
+                modalBody.innerHTML = html;
+
+                // ensure form has data-attempt-id
+                const form = modalBody.querySelector('#gradeForm');
+                if (form) form.dataset.attemptId = attemptId;
+
+                // we rely on delegated submit handler below
+              } catch (err) {
+                console.error(err);
+                modalBody.innerHTML = `<div class="text-danger p-3">Error loading form</div>`;
+              }
+            };
+          });
+        }
+
+        // delegated form submit for modal (works for dynamic content)
+        document.addEventListener('submit', async function (e) {
+          const form = e.target;
+          if (!form || form.id !== 'gradeForm') return;
+          e.preventDefault();
+
+          const attemptId = form.dataset.attemptId;
+          if (!attemptId) {
+            alert('Attempt ID missing');
+            return;
+          }
+
+          const fd = new FormData(form);
+
+          try {
+            const res = await fetch(GRADE_POST_URL_BASE + attemptId + '/', {
+              method: 'POST',
+              body: fd,
+              headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrftoken
+              },
+              credentials: 'same-origin'
+            });
+            if (!res.ok) throw new Error('Network error');
+            const j = await res.json();
+
+            if (j.success) {
+              // close modal
+              const modalEl = document.getElementById('gradeModal');
+              const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+              bsModal.hide();
+
+              // update that row in-place
+              const row = document.getElementById(`row-${attemptId}`);
+              if (row) {
+                const scoreCell = row.querySelector('.score');
+                const statusCell = row.querySelector('.status');
+                const actionCell = row.querySelector('td:last-child');
+                if (scoreCell && (j.total_score !== undefined)) scoreCell.textContent = j.total_score;
+                if (statusCell) statusCell.innerHTML = '<span class="badge bg-success">Graded</span>';
+                if (actionCell) actionCell.innerHTML = '<span class="text-muted">Done</span>';
+              }
+
+              // show success toast (optional)
+              const toastContainer = document.getElementById('toast-container');
+              if (toastContainer) {
+                const t = document.createElement('div');
+                t.className = 'toast align-items-center text-bg-success border-0 show mb-2';
+                t.innerHTML = `<div class="d-flex"><div class="toast-body">${j.message || 'Saved'}</div><button class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+                toastContainer.appendChild(t);
+                setTimeout(()=>t.remove(), 3000);
+              }
+
+              // refresh current page to reflect any ordering changes (and chart)
+              fetchGradingPage(gradePage);
+
+            } else {
+              // show error message in modal or toast
+              const err = j.message || 'Failed to save grading';
+              const modalBody = document.getElementById('gradeModalBody');
+              if (modalBody) {
+                const errEl = modalBody.querySelector('.grade-error');
+                if (errEl) errEl.textContent = err;
+                else modalBody.insertAdjacentHTML('afterbegin', `<div class="alert alert-danger grade-error">${err}</div>`);
+              } else {
+                alert(err);
+              }
+            }
+          } catch (err) {
+            console.error(err);
+            alert('Network error (grading submit)');
+          }
+        });
+
+        // prev/next
+        document.getElementById('grade-prev').addEventListener('click', function () {
+          if (gradePage > 1) {
+            fetchGradingPage(gradePage - 1);
+          }
+        });
+        document.getElementById('grade-next').addEventListener('click', function () {
+          // we'll rely on server to clamp page; just request next
+          fetchGradingPage(gradePage + 1);
+        });
+
+        // initial load
+        fetchGradingPage(1);
+
+        // optional interval refresh (but careful not to break modal interaction)
+        setInterval(() => {
+          // if modal is open, skip automatic refresh to avoid interfering with grading in progress
+          const modalEl = document.getElementById('gradeModal');
+          if (modalEl && modalEl.classList.contains('show')) return;
+          fetchGradingPage(gradePage);
+        }, 10000);
+
+      })();
+
+
+  
+let currentPage = 1;
+
+function loadNotifications(page = 1) {
+  fetch(`/notifications/fetch/?page=${page}`)
+    .then(response => response.json())
+    .then(data => {
+      const container = document.getElementById("notifications-container");
+      container.innerHTML = "";
+
+      if (data.notifications.length === 0) {
+        container.innerHTML = "<p class='text-gray-500'>No notifications yet.</p>";
+        return;
+      }
+
+      data.notifications.forEach(n => {
+        const item = document.createElement("div");
+        item.className = `p-3 rounded border ${n.is_read ? 'bg-gray-100' : 'bg-white'}`;
+        item.innerHTML = `
+          <p>${n.message}</p>
+          <small class="text-gray-500">${n.created_at}</small>
+        `;
+        container.appendChild(item);
+      });
+
+      // Update pagination info
+      document.getElementById("page-info").innerText =
+        `Page ${data.current_page} of ${data.num_pages}`;
+      document.getElementById("prev-page").disabled = !data.has_previous;
+      document.getElementById("next-page").disabled = !data.has_next;
+      currentPage = data.current_page;
+    });
+}
+
+// Pagination buttons
+document.getElementById("prev-page").addEventListener("click", () => {
+  if (currentPage > 1) loadNotifications(currentPage - 1);
+});
+document.getElementById("next-page").addEventListener("click", () => {
+  loadNotifications(currentPage + 1);
+});
+
+// Initial load
+loadNotifications();
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const searchInput = document.getElementById("searchInput");
+  const table = document.getElementById("attemptsTable");
+  const rows = table.getElementsByTagName("tr");
+
+  searchInput.addEventListener("keyup", function() {
+    const filter = searchInput.value.toLowerCase();
+    for (let i = 1; i < rows.length; i++) { // skip header
+      const studentCell = rows[i].getElementsByTagName("td")[0];
+      if (studentCell) {
+        const txtValue = studentCell.textContent || studentCell.innerText;
+        rows[i].style.display = txtValue.toLowerCase().includes(filter) ? "" : "none";
+      }
+    }
+  });
+});
+</script>
+
+{% endblock %}
+{% endblock %}

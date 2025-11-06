@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <div class="card shadow border-0">
+    <!-- Header -->
+    <div class="card-header bg-danger text-white">
+      <h1 class="h4 mb-0">
+        {{ quiz.title }} <span class="badge bg-light text-dark">Closed</span>
+      </h1>
+      <small class="d-block">Subject: {{ quiz.subject.name }}</small>
+    </div>
+
+    <!-- Quiz Details -->
+    <div class="card-body">
+      <p><strong>Created by:</strong> {{ quiz.created_by.get_full_name|default:quiz.created_by.username }}</p>
+      <p><strong>Class:</strong> {{ quiz.subject.school_class }}</p>
+      <p><strong>Created at:</strong> {{ quiz.created_at|date:"M d, Y H:i" }}</p>
+      <p><strong>Window:</strong> {{ quiz.start_time|date:"M d, Y H:i" }} → {{ quiz.end_time|date:"M d, Y H:i" }}</p>
+      <p><strong>Total Students Attempted:</strong> {{ attempts.count }}</p>
+    </div>
+
+    <!-- Attempts -->
+    <div class="card-body">
+      <h5 class="card-title">Students Who Attempted</h5>
+      {% if attempts %}
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Name</th>
+              <th scope="col">Class</th>
+              <th scope="col">Date Attempted</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for attempt in attempts %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ attempt.student.get_full_name|default:attempt.student.username }}</td>
+              <td>{{ attempt.student.student_class.name }}</td>
+              <td>{{ attempt.attempted_at|date:"M d, Y H:i" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted fst-italic">No students attempted this Exam.</p>
+      {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <div class="card-footer bg-light d-flex justify-content-between">
+      <a href="{% url 'dashboard' %}" class="btn btn-dark">← Back</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white rounded-xl shadow-md p-6 relative">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-2xl font-bold">{{ quiz.title }}</h2>
+    <div class="text-red-600 font-semibold">
+      Time left: <span id="timer"></span>
+    </div>
+  </div>
+
+  <form id="quizForm" method="post">
+    {% csrf_token %}
+    {% for q in questions %}
+      <div class="mb-6">
+        <h4 class="font-semibold mb-2">{{ forloop.counter }}. {{ q.text }}</h4>
+
+        {% if q.question_type == 'objective' %}
+          {% for choice in q.choice_set.all %}
+            <label class="block">
+              <input type="radio" name="question_{{ q.id }}" value="{{ choice.id }}">
+              {{ choice.text }}
+            </label>
+          {% endfor %}
+        {% else %}
+          <textarea name="question_{{ q.id }}" class="w-full border rounded p-2"></textarea>
+        {% endif %}
+      </div>
+    {% endfor %}
+    <div id="autosave-status" class="text-sm text-gray-500"></div>
+    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded mt-4">Submit Quiz</button>
+  </form>
+</div>
+
+<script>
+let remaining = {{ total_seconds }};
+const timerElem = document.getElementById("timer");
+const form = document.getElementById("quizForm");
+const autosaveStatus = document.getElementById("autosave-status");
+
+function updateTimer() {
+  const min = Math.floor(remaining / 60);
+  const sec = remaining % 60;
+  timerElem.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+  if (remaining <= 0) {
+    form.submit();
+  }
+  remaining--;
+}
+setInterval(updateTimer, 1000);
+updateTimer();
+
+// AUTOSAVE every 30s
+setInterval(() => {
+  const answers = {};
+  document.querySelectorAll("input[type=radio]:checked, textarea").forEach(el => {
+    const qid = el.name.split("_")[1];
+    answers[qid] = el.value;
+  });
+  fetch("", {
+    method: "POST",
+    headers: {"X-Requested-With": "XMLHttpRequest", "Content-Type": "application/json"},
+    body: JSON.stringify({answers})
+  }).then(res => res.json()).then(data => {
+    autosaveStatus.textContent = `Last saved at ${data.timestamp}`;
+  });
+}, 30000);
+</script>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% for question in quiz.questions.all %}
+  <p><b>{{ question.text }}</b></p>
+  {% if question.type == "objective" or question.type == "multiple_choice" %}
+    {% for choice in question.choices.all %}
+      <div class="form-check">
+        <input type="radio" name="question_{{ question.id }}" value="{{ choice.id }}">
+        <label>{{ choice.text }}</label>
+      </div>
+    {% endfor %}
+  {% else %}
+    <textarea name="question_{{ question.id }}" rows="3"></textarea>
+  {% endif %}
+{% endfor %}

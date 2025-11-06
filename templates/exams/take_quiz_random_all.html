@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container mt-5">
+  <div class="card shadow-lg">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="card-title h4 mb-0">{{ quiz.title }}</h2>
+        <div class="fw-bold text-danger">
+          Time left: <span id="timer"></span>
+        </div>
+      </div>
+
+       <div class="card-body">
+      <div id="take-quiz-messages"></div>
+
+      <form id="quizForm" method="post">
+        {% csrf_token %}
+
+        {% for q in questions %}
+        <div class="mb-4">
+          <h5 class="fw-semibold mb-3">{{ forloop.counter }}. {{ q.text }}</h5>
+
+          {% if q.question_type == 'objective' %}
+            {% for choice in q.shuffled_choices %}
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="radio" name="question_{{ q.id }}" value="{{ choice.id }}" id="choice_{{ choice.id }}">
+              <label class="form-check-label" for="choice_{{ choice.id }}">
+                {{ choice.text }}
+              </label>
+            </div>
+            {% endfor %}
+          {% else %}
+            <textarea name="question_{{ q.id }}" class="form-control" rows="3" placeholder="Type your answer here..."></textarea>
+          {% endif %}
+        </div>
+        {% endfor %}
+
+        <div id="autosave-status" class="small text-muted mb-3"></div>
+
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-primary px-4">Submit Quiz</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+let remaining = {{ total_seconds }};
+const timerElem = document.getElementById("timer");
+const form = document.getElementById("quizForm");
+const autosaveStatus = document.getElementById("autosave-status");
+
+function updateTimer() {
+  const min = Math.floor(remaining / 60);
+  const sec = remaining % 60;
+  timerElem.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+  if (remaining <= 0) {
+    form.submit();
+  }
+  remaining--;
+}
+setInterval(updateTimer, 1000);
+updateTimer();
+
+// AUTOSAVE every 30 seconds
+setInterval(() => {
+  const answers = {};
+  document.querySelectorAll("input[type=radio]:checked, textarea").forEach(el => {
+    const qid = el.name.split("_")[1];
+    answers[qid] = el.value;
+  });
+  fetch("", {
+    method: "POST",
+    headers: {"X-Requested-With": "XMLHttpRequest", "Content-Type": "application/json"},
+    body: JSON.stringify({answers})
+  })
+  .then(res => res.json())
+  .then(data => {
+    autosaveStatus.textContent = `Last saved at ${data.timestamp}`;
+  })
+  .catch(() => {
+    autosaveStatus.textContent = "Autosave failed!";
+  });
+}, 30000);
+</script>
+
+{% endblock %}

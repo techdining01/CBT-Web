@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="fw-bold mb-3">📝 Pending Subjective Grading</h2>
+    </div>
+    <div class="d-flex align-items-center">
+      <a href="{% url 'dashboard' %}" class="btn btn-dark btn-sm me-2"
+        > ← Back</a>
+    </div>
+  </div>
+
+    {% if answers %}
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Quiz</th>
+                    <th>Question</th>
+                    <th>Answer</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ans in answers %}
+                <tr>
+                    <td>{{ ans.attempt.student.get_full_name |truncatewords:14}}</td>
+                    <td>{{ ans.question.quiz.title }}</td>
+                    <td>{{ ans.question.text|truncatewords:12 }}</td>
+                    <td>{{ ans.text_answer|truncatewords:20 }}</td>
+                    <td>
+                        <a href="{% url 'grade_attempt' attempt.id  %}" class="btn btn-sm btn-primary">                               
+                         Grade
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No subjective answers pending grading ✅</p>
+    {% endif %}
+</div>
+
+<!-- Modal -->
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var gradeModal = document.getElementById('gradeModal');
+    gradeModal.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        document.getElementById('modalAnswerId').value = button.getAttribute('data-id');
+        document.getElementById('modalStudent').innerText = button.getAttribute('data-student');
+        document.getElementById('modalQuestion').innerText = button.getAttribute('data-question');
+        document.getElementById('modalAnswer').innerText = button.getAttribute('data-answer');
+    });
+});
+</script>
+{% endblock %}

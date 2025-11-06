@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body{ font-family: Helvetica, Arial, sans-serif; }
+    .header { display:flex; align-items:center; }
+    .logo { width:80px; margin-right: 20px; }
+    .student-photo { width:70px; border-radius: 50%; margin-left:auto; }
+    table { width:100%; border-collapse:collapse; margin-top:20px; }
+    td, th { border:1px solid #ddd; padding:8px; }
+    th { background:#f4f4f4; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img class="logo" src="{{ request.build_absolute_uri }}/static/images/school_logo.png" />
+    <div style="text-align:center">
+      <h2>{{SCHOOL_NAME}}</h2>
+      <div>Consolidated Results</div>
+    </div>
+    {% if student.profile_picture %}
+      <img class="student-photo" src="{{ student.profile_picture.url }}" />
+    {% endif %}
+  </div>
+
+  <h3>Student: {{ student.get_full_name }} ({{ student.username }})</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Quiz</th>
+        <th>Started</th>
+        <th>Score</th>
+        <th>Graded</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in attempts %}
+      <tr>
+        <td>{{ a.quiz.title }}</td>
+        <td>{{ a.started_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ a.total_score }}</td>
+        <td>{{ a.graded }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

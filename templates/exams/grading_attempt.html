@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h3>Grade {{ attempt.quiz.title }} → {{ attempt.student.get_full_name }}</h3>
+  <form method="post" id="gradeForm">
+    {% csrf_token %}
+    {% for ans in answers %}
+    <div class="border rounded p-3 mb-3">
+      <p><strong>Question {{ forloop.counter }}:</strong> {{ ans.question.text }}</p>
+      <p><strong>Student Answer:</strong> {{ ans.text_answer }}</p>
+      <label>Score:</label>
+      <input type="number" step="0.5" name="score_{{ ans.id }}" value="{{ ans.score }}" class="form-control w-25">
+    </div>
+    {% empty %}
+    <p>No subjective questions to grade.</p>
+    {% endfor %}
+    <button type="submit" class="btn btn-success">Save Grades</button>
+  </form>
+</div>
+
+<script>
+document.getElementById('gradeForm').addEventListener('submit', e => {
+  e.preventDefault();
+  fetch("{% url 'grade_attempt' attempt_id=attempt.id %}", {
+    method: "POST",
+    body: new FormData(e.target),
+    headers: { "X-Requested-With": "XMLHttpRequest" }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert(data.message);
+      window.location.href = "{% url 'grading_list' %}";
+    } else {
+      alert("Error saving grades");
+    }
+  })
+  .catch(err => alert("Network error: " + err));
+});
+</script>
+{% endblock %}

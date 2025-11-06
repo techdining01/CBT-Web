@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h3 class="d-inline ms-2 text-center fw-bold">📄 Class Report Generator</h3>
+    </div>
+    <div class="d-flex align-items-center">
+      <a href="{% url 'dashboard' %}" class="btn btn-black p-2 text-white bg-dark">Back</a>
+    </div>
+  </div>
+
+  <form method="get" action="{% url 'admin_class_report_pdf' %}" class="border rounded p-4 bg-light shadow-sm">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label for="class_id" class="form-label">Select Class</label>
+        <select name="class_id" id="class_id" class="form-select" required>
+          <option value="">-- Choose a Class --</option>
+          {% for cls in classes %}
+          <option value="{{ cls.id }}">{{ cls.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <label for="start_date" class="form-label">Start Date</label>
+        <input type="date" name="start_date" id="start_date" class="form-control">
+      </div>
+
+      <div class="col-md-3">
+        <label for="end_date" class="form-label">End Date</label>
+        <input type="date" name="end_date" id="end_date" class="form-control">
+      </div>
+
+      <div class="col-md-2 text-center">
+        <button type="submit" class="btn btn-success w-100">
+          <i class="bi bi-file-earmark-pdf"></i> Generate
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <p class="text-muted mt-3 text-center">Select a class and optionally choose a date range (e.g., for a term) to generate PDF reports.</p>
+</div>
+{% endblock %}
