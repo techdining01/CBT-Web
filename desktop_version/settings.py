@@ -56,8 +56,8 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-SCHOOL_NAME = "THE BRILLS SCHOOLS"
-SCHOOL_ADDRESS = "No 1, Adaba Akufo road. Ibadan. Oyo State"
+SCHOOL_NAME = "AL-MUMEEN STANDARD ACADEMY"
+SCHOOL_ADDRESS = "No 1, Adeepo/egbeda tuba road. Ibadan. Oyo State"
 
 # Messages config (optional but neat)
 from django.contrib.messages import constants as messages

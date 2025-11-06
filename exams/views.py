@@ -629,7 +629,7 @@ def admin_classes_report_pdf(request, class_id):
     for student in students:
         # --- Header with logo, name, and student photo ---
         try:
-            logo = Image(logo_path, width=2.0*inch, height=2.0*inch)
+            logo = Image(logo_path, width=1.0*inch, height=1.0*inch)
         except Exception:
             logo = Paragraph("", styles['Normal'])
 
@@ -799,7 +799,7 @@ def admin_class_report_pdf(request):
     for student in students:
         # School header
         try:
-            logo = Image(logo_path, width=2.1 * inch, height=2.1 * inch)
+            logo = Image(logo_path, width=1.1 * inch, height=1.1 * inch)
         except Exception:
             logo = Paragraph("", styles['Normal'])
 
