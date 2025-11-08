@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h4 class="mb-3">Restore Database Backup</h4>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="mb-3">
+      <input type="file" name="backup_file" class="form-control" required>
+    </div>
+    <button type="submit" class="btn btn-warning">Restore Backup</button>
+  </form>
+</div>
+{% endblock %}

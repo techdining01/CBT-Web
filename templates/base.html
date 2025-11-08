@@ -11,9 +11,9 @@
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'css/styles.css' %}" rel="stylesheet"> 
     <link rel="stylesheet" href="{% static 'css/tailwind.min.css' %}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">       
-     
-   
+    <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
+       
+    
 </head>
 <body class="bg-gray-100">
 
@@ -30,7 +30,7 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-4">
         <a class="navbar-brand d-flex align-items-center" href="#">
             <img src="/static/images/school_logo2.png" alt="School Logo" width="50" height="50" class="me-2">
-            <span class="fw-bold">ADEM GROUP OF SCHOOLS</span>
+            <span class="fw-bold">AL-MUMEEN STANDARD ACADEMY</span>
         </a>
 
         <div class="ms-auto d-flex align-items-center gap-2">
@@ -72,6 +72,47 @@
                 el.style.display = 'none';
             });
         }, 3000);
-    </script>
+        
+    
+        //let idleTime = 0;
+        //const logoutURL = "{% url 'logout' %}";  // adjust if different
+
+        // Increment idle time every minute
+        //setInterval(() => {
+        //idleTime++;
+        //if (idleTime >= 10) {  // 10 minutes
+        //    window.location.href = logoutURL;
+        //}
+        //}, 60000); // 1 minute
+
+        // Reset idle time on user activity
+        //['mousemove', 'keydown', 'scroll', 'click'].forEach(event => {
+        //window.addEventListener(event, () => idleTime = 0);
+        //}); 
+
+
+        let idleTime = 0;
+        const logoutURL = "{% url 'logout' %}";
+        const sessionExpiredURL = "{% url 'session_expired' %}";
+
+        // Increment every minute
+        setInterval(() => {
+        idleTime++;
+        if (idleTime >= 10) {  // 10 minutes
+            // Notify server to log out
+            fetch(logoutURL)
+            .then(() => window.location.href = sessionExpiredURL);
+        }
+        }, 60000);  // 1 minute
+
+        // Reset on activity
+        ['mousemove', 'keydown', 'scroll', 'click'].forEach(event => {
+        window.addEventListener(event, () => idleTime = 0);
+        });
+
+
+
+</script>
+
 </body>
 </html>
