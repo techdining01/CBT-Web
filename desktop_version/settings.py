@@ -40,13 +40,28 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_apscheduler',
+    'cores',
     'users',
     'exams',
   
 ]
 INSTALLED_APPS += ['django_session_timeout']
 
+AWS_ACCESS_KEY_ID = 'your_aws_access_key'
+AWS_SECRET_ACCESS_KEY = 'your_aws_secret_key'
+AWS_STORAGE_BUCKET_NAME = 'your_bucket_name'
+AWS_S3_REGION_NAME = 'us-east-1'  # adjust as needed
+AWS_DEFAULT_ACL = None
 
+BACKUP_DIR = BASE_DIR / 'backups'
+
+# Optional encryption key (generate once using Fernet.generate_key())
+FERNET_KEY = b'your_generated_key_here'
+
+
+
+# Custom user model
 
 AUTH_USER_MODEL = 'users.User'
 
@@ -58,6 +73,12 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 SCHOOL_NAME = "AL-MUMEEN STANDARD ACADEMY"
 SCHOOL_ADDRESS = "No 1, Adeepo/egbeda tuba road. Ibadan. Oyo State"
+
+
+CRONJOBS = [
+    ('0 2 * * *', 'core.cron.daily_backup'),  # runs every day at 2 AM
+]
+
 
 # Messages config (optional but neat)
 from django.contrib.messages import constants as messages
@@ -77,16 +98,22 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 'desktop_version.middleware.auto_logout.AutoLogoutMiddleware',  
 ]
-# MIDDLEWARE += ['django_session_timeout.middleware.SessionTimeoutMiddleware']
 
-# # Logout after 10 minutes (600 seconds)
-# SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-# SESSION_COOKIE_AGE = 600  
-# SESSION_EXPIRE_SECONDS = 600
-# SESSION_EXPIRE_AFTER_LAST_ACTIVITY = True
-# SESSION_TIMEOUT_REDIRECT = 'login'
+MIDDLEWARE += [
+    'cores.middleware.auto_logout.AutoLogoutMiddleware',
+]
+
+
+# Session expires after 10 minutes (600 seconds)
+SESSION_COOKIE_AGE = 600  
+
+# Expire session when the browser is closed
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True  
+
+# Update session timestamp on each request (resets timeout if active)
+SESSION_SAVE_EVERY_REQUEST = True  
+
 
 ROOT_URLCONF = 'desktop_version.urls'
 
