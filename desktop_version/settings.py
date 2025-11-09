@@ -12,23 +12,23 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 from pathlib import Path
-#from dotenv import load_dotenv
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-#load_dotenv(os.path.join(BASE_DIR, '.env'))
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-*@x$&sfbtvrai7+t5(!hzpg#aex1pk6+*+equ+0m^!&!8+7-v5'
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['ademcbtportal.edu.ng']
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -71,8 +71,8 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-SCHOOL_NAME = "ADEM GROUP OF SCHOOLS"
-SCHOOL_ADDRESS = "No 1, Owo Ade Street, Molete. Ibadan. Oyo State"
+SCHOOL_NAME = "AL-MUMEEN STANDARD ACADEMY"
+SCHOOL_ADDRESS = "No 1, Adeepo/egbeda tuba road. Ibadan. Oyo State"
 
 
 CRONJOBS = [
@@ -186,6 +186,3 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-
-
