@@ -1,8 +1,8 @@
 altgraph==0.17.4
-#APScheduler==3.11.1
+APScheduler==3.11.1
 asgiref==3.9.1
-#boto3==1.40.68
-#botocore==1.40.68
+boto3==1.40.68
+botocore==1.40.68
 bottle==0.13.4
 Brotli==1.1.0
 certifi==2025.10.5
@@ -15,7 +15,7 @@ cssselect2==0.8.0
 cycler==0.12.1
 Django==5.2.6
 django-apscheduler==0.7.0
-#django-crontab==0.7.1
+django-crontab==0.7.1
 django-session-timeout==0.1.0
 django-storages==1.14.6
 et_xmlfile==2.0.0
@@ -36,7 +36,7 @@ pyparsing==3.2.5
 pyphen==0.17.2
 python-dateutil==2.9.0.post0
 python-decouple==3.8
-#python-dotenv==1.2.1
+python-dotenv==1.2.1
 pythonnet==3.0.5
 pywin32-ctypes==0.2.3
 reportlab==4.4.3
@@ -53,4 +53,5 @@ tzlocal==5.3.1
 urllib3==2.5.0
 webencodings==0.5.1
 zopfli==0.2.3.post1
+
 
