@@ -71,8 +71,8 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-SCHOOL_NAME = "AL-MUMEEN STANDARD ACADEMY"
-SCHOOL_ADDRESS = "No 1, Adeepo/egbeda tuba road. Ibadan. Oyo State"
+SCHOOL_NAME = "ADEM GROUP OF SCHOOLS"
+SCHOOL_ADDRESS = "No 1, Owo Ade Street, Molete. Ibadan. Oyo State"
 
 
 CRONJOBS = [
@@ -186,5 +186,6 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 
 
