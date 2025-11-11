@@ -69,12 +69,12 @@ AUTH_USER_MODEL = 'users.User'
 
 # Static & media
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = os.path.join(BASE_DIR,  'staticfiles/')
+STATICFILES_DIRS = [os.path.join(BASE_DIR,  'static/')]
 
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
 SCHOOL_NAME = "ADEM GROUP OF SCHOOLS"
 SCHOOL_ADDRESS = "No 1, Owo Ade Street, Molete Ibadan. Oyo State"
