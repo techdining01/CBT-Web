@@ -43,6 +43,7 @@ pefile==2023.2.7
 pillow==11.3.0
 premailer==3.10.0
 proxy_tools==0.1.0
+psycopg2-binary==2.9.11
 pycparser==2.23
 pydyf==0.11.0
 pyparsing==3.2.5
@@ -68,4 +69,5 @@ tzdata==2025.2
 tzlocal==5.3.1
 urllib3==2.5.0
 webencodings==0.5.1
+whitenoise==6.11.0
 zopfli==0.2.3.post1

@@ -8,9 +8,9 @@ class Command(BaseCommand):
     help = "Create a default superadmin if it doesn't exist"
 
     def handle(self, *args, **kwargs):
-        username = "tbs_admin"
+        username = "adem_admin"
         email = "superadmin@tbs.com"
-        password = "tbs25"  # Change or pull from env for security
+        password = "adem25"  # Change or pull from env for security
 
         if not User.objects.filter(username=username).exists():
             User.objects.create_superuser(

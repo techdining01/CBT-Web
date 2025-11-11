@@ -26,9 +26,9 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['cbt-web-g5xq.onrender.com', 'localhost']
+ALLOWED_HOSTS = ['cbt-web-g5xq.onrender.com', '127.0.0.1']
 
 
 # Application definition
