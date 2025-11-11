@@ -74,7 +74,7 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR,  'static/')]
 
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media/profiles')
 
 SCHOOL_NAME = "ADEM GROUP OF SCHOOLS"
 SCHOOL_ADDRESS = "No 1, Owo Ade Street, Molete Ibadan. Oyo State"
