@@ -39,7 +39,6 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    "whitenoise.runserver_nostatic",
     'django.contrib.staticfiles',
     'django_apscheduler',
     'cores',
@@ -48,6 +47,8 @@ INSTALLED_APPS = [
   
 ]
 INSTALLED_APPS += ['django_session_timeout']
+
+
 
 AWS_ACCESS_KEY_ID = 'your_aws_access_key'
 AWS_SECRET_ACCESS_KEY = 'your_aws_secret_key'
